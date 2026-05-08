@@ -1,0 +1,57 @@
+# 编译生成的文件和目录
+*.o
+*.mod.c
+*.symvers
+*.order
+*.dtb
+.vmlinux*
+initrd.img
+System.map
+modules.order
+Module.symvers
+.tmp_versions/
+*.cmd
+*.d
+
+# 内核配置文件
+.config
+.config.old
+
+# 日志文件
+*.log
+
+# 临时文件和备份文件
+*~
+*.bak
+
+# 调试信息文件
+*.debug
+
+# 文档生成的文件
+Documentation/output/
+
+# 工具生成的文件
+scripts/kconfig/.tmp*
+scripts/kconfig/conf.o
+scripts/kconfig/zconf.tab.c
+scripts/kconfig/zconf.tab.h
+scripts/kconfig/zconf.lex.c
+scripts/kconfig/zconf.hash.c
+
+# 交叉编译相关的临时文件
+arch/*/boot/compressed/
+arch/*/boot/dts/
+
+# 自动生成的头文件
+include/generated/
+include/config/
+
+# 内核模块签名文件
+*.sign
+
+# 编辑器产生的文件
+.idea/
+.vscode/
+
+# 构建输出目录
+Seekfree_LS2K0300_Opensource_Library/project/out/
