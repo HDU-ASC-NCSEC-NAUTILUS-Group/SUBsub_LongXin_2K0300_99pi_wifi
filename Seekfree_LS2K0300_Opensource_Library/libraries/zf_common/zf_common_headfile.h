@@ -74,12 +74,13 @@
 // //#include "zf_driver_soft_spi.h"
 // #include "zf_driver_spi.h"
 // #include "zf_driver_timer.h"
-//#include "zf_driver_uart.h"
+// #include "zf_driver_uart.h"
 // #include "zf_driver_usb_cdc.h"
 // #include "zf_driver_usb_cdc.h"
 #include "zf_driver_udp.h"
 #include "zf_driver_tcp_client.h"
 #include "zf_driver_pit_fd.h"
+#include "zf_driver_i2c.h"
 //===================================================芯片外设驱动层===================================================
 
 //===================================================外接设备驱动层===================================================
@@ -89,6 +90,7 @@
 #include "zf_device_imu660ra.h"
 #include "zf_device_imu660rb.h"
 #include "zf_device_imu963ra.h"
+#include "zf_device_pca9685.h"
 
 
 // #include "zf_device_uvc.h"
@@ -129,11 +131,36 @@
 #include "seekfree_assistant_interface.h"
 //===================================================应用组件层===================================================
 
+
+//===================================================外部组件库===================================================
+#include "ncnn/net.h" // for ncnn
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>  // for cv::cvtColor
+#include <opencv2/highgui/highgui.hpp> // for cv::VideoCapture
+#include <iostream> // for std::cerr
+#include <fstream>  // for std::ofstream
+#include <thread>
+#include <chrono>
+#include <atomic>
+//===================================================外部组件库===================================================
+
+
+//===================================================TFLITE组件库===================================================
+#include "tensorflow/lite/core/c/common.h"
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_log.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/micro/micro_profiler.h"
+#include "tensorflow/lite/micro/recording_micro_interpreter.h"
+#include "tensorflow/lite/micro/system_setup.h"
+#include "tensorflow/lite/micro/cortex_m_generic/debug_log_callback.h"
+#include "tensorflow/lite/schema/schema_generated.h"
+
+//===================================================TFLITE组件库===================================================
+
+
 //===================================================用户自定义文件===================================================
-#include "image_process.h"
-#include "defines.h"
-#include "Key.h"
-#include "param_config.h"
+#include "../model/loong_cnn_model_simple.h"
 //===================================================用户自定义文件===================================================
 
 
