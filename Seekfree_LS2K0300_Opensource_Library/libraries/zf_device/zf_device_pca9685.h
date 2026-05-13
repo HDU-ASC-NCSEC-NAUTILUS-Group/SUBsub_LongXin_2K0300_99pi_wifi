@@ -35,17 +35,17 @@ void pca9685_set_all_pwm(int fd, uint16 on, uint16 off);
 void pca9685_set_servo_pulse(int fd, uint8 channel, uint16 pulse_us);
 
 /*
- * 简化舵机接口
- * fd 是 open("/dev/i2c-*") 返回的文件描述符，不会自动变化
- * 每次调用显式传入 fd 是为了支持多模块级联：
- *   int fd1 = Servo_Init("/dev/i2c-4", 0x40);  // 模块1
- *   int fd2 = Servo_Init("/dev/i2c-4", 0x41);  // 模块2 (不同地址)
- *   Set_Servo(fd1, 0, 90);   Set_Servo(fd2, 0, 45);
- * 只接一个模块时，保存好 fd 一直复用即可
+ * 简化舵机接口（无 fd 参数，内部自动管理）
+ * Servo_Init 打开 I2C 并初始化 PCA9685，后续调用直接写 channel+angle 即可
+ *   例: Servo_Init("/dev/i2c-4", 0x40);
+ *       Set_Servo(0, 90);
+ *       Stop_Servo(3);
+ *       Stop_Servo_All();
+ * 多模块级联时用底层 pca9685_* 函数（带 fd 参数）
  */
 int  Servo_Init(const char *i2c_dev, uint8 addr);
-void Set_Servo(int fd, uint8 channel, uint16 angle);
-void Stop_Servo(int fd, uint8 channel);
-void Stop_Servo_All(int fd);
+void Set_Servo(uint8 channel, uint16 angle);
+void Stop_Servo(uint8 channel);
+void Stop_Servo_All(void);
 
 #endif

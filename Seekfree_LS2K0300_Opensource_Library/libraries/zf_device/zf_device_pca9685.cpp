@@ -104,7 +104,7 @@ int Servo_Init(const char *i2c_dev, uint8 addr)
     return fd;
 }
 
-void Set_Servo(int fd, uint8 channel, uint16 angle)
+void Set_Servo(uint8 channel, uint16 angle)
 {
     uint32 pulse_us = SERVO_PULSE_MIN_US
         + (uint32)(SERVO_PULSE_MAX_US - SERVO_PULSE_MIN_US) * angle / SERVO_ANGLE_MAX;
@@ -113,15 +113,15 @@ void Set_Servo(int fd, uint8 channel, uint16 angle)
     float us_per_count = period_us / (float)PCA9685_PWM_RESOLUTION;
     uint16 pulse = (uint16)((float)pulse_us / us_per_count);
 
-    pca9685_set_pwm(fd, channel, 0, pulse);
+    pca9685_set_pwm(g_fd, channel, 0, pulse);
 }
 
-void Stop_Servo(int fd, uint8 channel)
+void Stop_Servo(uint8 channel)
 {
-    pca9685_set_pwm(fd, channel, 0, 0);
+    pca9685_set_pwm(g_fd, channel, 0, 0);
 }
 
-void Stop_Servo_All(int fd)
+void Stop_Servo_All(void)
 {
-    pca9685_set_all_pwm(fd, 0, 0);
+    pca9685_set_all_pwm(g_fd, 0, 0);
 }
