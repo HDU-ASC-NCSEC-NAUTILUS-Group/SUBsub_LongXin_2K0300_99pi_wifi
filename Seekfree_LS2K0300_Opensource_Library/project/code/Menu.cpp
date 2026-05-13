@@ -2,12 +2,8 @@
  * 主菜单
  ********************************************************************************************************************/
 #include "zf_common_headfile.h"
-#include "zf_device_imu_core.h"
 
 #include "Debug_Page.h"
-#include "defines.h"
-#include "Key.h"
-#include "Motor.h"
 
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -21,12 +17,6 @@ void Peripheral_Init(void)
     ips200_init("/dev/fb0");
     ips200_clear();
 //    ips200_full(RGB565_BLACK);
-
-    // 电机初始化调用
-    Motor_Init();
-
-    // IMU 初始化
-    imu_get_dev_info();
 
     // 初始化UVC摄像头
     if(uvc_camera_init("/dev/video0") < 0)

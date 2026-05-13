@@ -33,12 +33,7 @@
 
 #include "zf_common_headfile.h"
 
-#include "defines.h"
 #include "Menu.h"
-#include "Key.h"
-#include "Motor.h"
-#include "IMU_Analysis.h"
-#include "param_config.h"
 
 
 /*******************************************************************************************************************/
@@ -52,7 +47,6 @@ timer_fd *pit_timer_200ms;
 void pit_callback_10ms()
 {
     Key_Tick();
-    IMU_D_and_A_Enable = 1;
 }
 
 void pit_callback_200ms()
@@ -77,12 +71,11 @@ void cleanup()
     pit_timer_200ms->stop();
 
     printf("程序退出，执行清理操作\n");
-    Motor_Reset_ALL();
 }
 // 宣告程序退出函数
 void sigint_handler(int signum) 
 {
-    printf("收到Ctrl+C，程序即将退出\n");
+    printf("收到Ctrl+C,程序即将退出\n");
     exit(0);
 }
 /*******************************************************************************************************************/
@@ -110,6 +103,6 @@ int main(int, char**)
 
     while(1)
     {
-//        Menu_Show();
+        Menu_Show();
     }
 }

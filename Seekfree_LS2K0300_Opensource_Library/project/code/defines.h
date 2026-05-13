@@ -12,9 +12,4 @@
 // 蜂鸣器宏定义
 #define BEEP_DEFINE         "/dev/zf_driver_gpio_beep"  
 
-// 编码器宏定义
-#define ENCODER_QUAD_1  "/dev/zf_encoder_quad_1"
-#define ENCODER_QUAD_2  "/dev/zf_encoder_quad_2"
-
-
 #endif
