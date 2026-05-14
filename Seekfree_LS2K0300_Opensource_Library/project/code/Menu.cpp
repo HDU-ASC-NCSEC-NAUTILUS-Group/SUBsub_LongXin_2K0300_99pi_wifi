@@ -22,15 +22,20 @@ void Peripheral_Init(void)
     // 初始化UVC摄像头
     if(uvc_camera_init("/dev/video0") < 0)
     {
-        printf("failed:UVC初始化失败");
+        printf("failed:UVC初始化失败\n");
     }
 
     // 初始化PCA9685（舵机驱动）
     if (Servo_Init("/dev/i2c-4", 0x40) < 0) {
         // 初始化失败：设备节点不存在 / 没接电源 / 地址不对
-        printf("failed:PCA9685舵机驱动初始化失败");
+        printf("failed:PCA9685舵机驱动初始化失败\n");
     }
     Stop_Servo_All();
+
+    if (uart1_init("/dev/ttyS1", 115200))
+    {   
+        printf("failed:uart1串口初始化失败\n");
+    }
 }
 
 /*******************************************************************************************************************/
