@@ -23,8 +23,20 @@
 #define SERVO_FREQ               50
 #define SERVO_ANGLE_MIN          0
 #define SERVO_ANGLE_MAX          180
-#define SERVO_PULSE_MIN_US       500
-#define SERVO_PULSE_MAX_US       2500
+
+/*
+ * 舵机脉冲范围校准（不同批次 MG90S 实测偏差可达 100-200μs）
+ *
+ * 校准方法:
+ *   将 MIN 改大后调用 Set_Servo(0, 0)，观察是否到 0°
+ *   将 MAX 改小后调用 Set_Servo(0, 180)，观察是否到 180°
+ *   反复微调直到两个端点都恰好到位，建议每次增减 50μs
+ *
+ * 常见参考: 500~2500, 600~2400, 700~2300
+ * 改中间值即可，角度比例映射自动生效，90°恒为 (MIN+MAX)/2
+ */
+#define SERVO_PULSE_MIN_US       300
+#define SERVO_PULSE_MAX_US       2700
 
 int  pca9685_init(const char *i2c_dev, uint8 addr);
 void pca9685_close(int fd);

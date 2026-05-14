@@ -70,6 +70,8 @@ void cleanup()
     pit_timer_10ms->stop();
     pit_timer_200ms->stop();
 
+    Stop_Servo_All();
+
     printf("程序退出，执行清理操作\n");
 }
 // 宣告程序退出函数

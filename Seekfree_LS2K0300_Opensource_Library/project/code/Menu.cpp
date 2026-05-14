@@ -48,7 +48,6 @@ void Menu_UI(uint8_t Page)
             ips200_show_string(8  ,0  , "[Menu]");
             ips200_show_string(0  ,16 , "==============================");
             ips200_show_string(10 ,32 , "Debug");
-            ips200_show_string(10 ,48 , "Avoid");
 
 			break;
 		}
