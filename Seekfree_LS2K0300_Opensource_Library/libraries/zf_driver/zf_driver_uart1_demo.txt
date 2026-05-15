@@ -1,0 +1,68 @@
+// ==================== 帧解析 Demo ====================
+// 协议格式: [字段1,字段2,字段3]\n  例: [AA,BB,123]\n
+// 调用: 主循环每10ms一次 uart_parse_task();
+// 依赖: #include "zf_common_headfile.h"  (提供 uart1_recv, system_delay_ms)
+
+#include <string.h>
+#include <stdio.h>
+
+#define PARSE_BUF_SIZE 128                      // > 最大帧长
+
+// ---- 滑动窗口缓冲 (分包拼接的核心) ----
+static uint8_t rx_ring[PARSE_BUF_SIZE];         // 环形缓冲区
+static int     rx_pos = 0;                      // 已收字节数
+
+void uart_parse_task(void)
+{
+    char parse_buffer[PARSE_BUF_SIZE];          // strtok 的工作区
+    char *tag1, *tag2, *tag3;
+
+    // 收字节追加到缓冲尾
+    int n = uart1_recv(rx_ring + rx_pos, sizeof(rx_ring) - rx_pos - 1);
+    if (n <= 0) return;
+    rx_pos += n;
+    rx_ring[rx_pos] = 0;
+
+    // 找完整帧 (\n 结尾)
+    char *end = strchr((char*)rx_ring, '\n');
+    if (!end) return;
+    *end = 0;
+
+    // 取 [...] 内的内容
+    char *start = strchr((char*)rx_ring, '[');
+    char *stop  = strchr((char*)rx_ring, ']');
+    if (!start || !stop || stop <= start) goto shift;
+
+    // 复制到本地缓冲区
+    int len = stop - start - 1;
+    if (len >= PARSE_BUF_SIZE) len = PARSE_BUF_SIZE - 1;
+    memcpy(parse_buffer, start + 1, len);
+    parse_buffer[len] = '\0';
+
+    // 按逗号拆字段
+    tag1 = strtok(parse_buffer, ",");  if (!tag1) goto shift;
+    tag2 = strtok(NULL,          ",");  if (!tag2) goto shift;
+    tag3 = strtok(NULL,          ",");  if (!tag3) goto shift;
+
+
+    // ========== 字段处理 (在此扩展) ==========
+    int num1;
+    sscanf(tag3, "%d", &num1);
+
+    if (strcmp(tag1, "NAME1") == 0 && strcmp(tag2, "NAME") == 0) {
+        printf("匹配: %s %s %d\n", tag1, tag2, num1);
+    }
+    // else if(strcmp(tag1, "X") == 0)  { ... }  // 新增命令在此
+
+
+shift:                                          // 滑动窗口: 移除已处理帧
+    int remain = rx_pos - (end + 1 - (char*)rx_ring);
+    if (remain > 0) { memmove(rx_ring, end + 1, remain); rx_pos = remain; }
+    else            { rx_pos = 0; }
+}
+
+// ==================== 使用说明 ====================
+// 1. 把 NAME1/NAME 替换为你的实际标识字符串
+// 2. 需要扩展字段数量: 增删 strtok(NULL,",") 行即可
+// 3. 需要支持变长字段: 将 strtok 改为 while 循环, 字段指针存入数组
+// 4. 已测试场景: 115200波特率, 10ms轮询, 单帧 < 128字节
