@@ -17,7 +17,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
 		case 1:
 			ips200_show_string(8  ,0  , "[Debug]");
 			ips200_show_string(0  ,16 , "==============================");
-			ips200_show_string(10 ,32 , "BUZ");
+			ips200_show_string(10 ,32 , "UART1");
             ips200_show_string(10 ,48 , "UVC-QR");
             ips200_show_string(10 ,64 , "UVC-TRACK");
             ips200_show_string(10 ,80 , "Servo(PCA9685)");
@@ -26,12 +26,19 @@ void Debug_Page_Menu_UI(uint8_t Page)
 	}
 }
 
-// [三级界面]蜂鸣器调试界面
-void Debug_BUZ_UI(void)
+// [三级界面]UART1调试界面
+void Debug_UART1_UI(void)
 {
-    ips200_show_string(8  ,0  , "[DEBUG]-BUZ");
+    ips200_show_string(8  ,0  , "[DEBUG]-UART1");
     ips200_show_string(0  ,16 , "==============================");
-    ips200_show_string(10 ,32 , "OFF");
+    ips200_show_string(0  ,32 , "TX:");
+    // 占位(必要时上一行溢出的字符会切割到这一行显示)
+    ips200_show_string(0  ,64 , "RX:");
+    // 占位(必要时上一行溢出的字符会切割到这一行显示)
+    // 占位
+    ips200_show_string(0  ,112, "CH1:"); // 切分到的第一个字符
+    ips200_show_string(0  ,128, "CH2:"); // 切分到的第二个字符(如果有)
+    ips200_show_string(0  ,144, "CH3:"); // 切分到的第三个字符(如果有)
 }
 
 // [三级界面]UVC摄像头的二维码识别调试界面
@@ -72,7 +79,7 @@ void Debug_Servo_UI(void)
 /*******************************************************************************************************************/
 
 // 相关函数提前声明
-int Debug_BUZ           (void);
+int Debug_UART1         (void);
 int Debug_UVC_QR        (void);
 int Debug_UVC_TRACK     (void);
 int Debug_Servo         (void);
@@ -123,7 +130,7 @@ int Debug_Page_Menu(void)
         if (Debug_Page_flag_temp == 1)
         {
             ips200_clear();
-            Debug_BUZ();
+            Debug_UART1();
             
             // 从子界面返回后
             ips200_clear();
@@ -202,43 +209,118 @@ int Debug_Page_Menu(void)
     }
 }
 
-
-//	####   #   #  #####
-//	#   #  #   #     #  
-//	####   #   #    #  
-//	#   #  #   #   #   
-//	####    ###   ##### 
+//  #   #   ###   ####   #####    #    
+//  #   #  #   #  #   #    #    ###    
+//  #   #  #####  ####     #      #    
+//  #   #  #   #  #  #     #      #    
+//   ###   #   #  #   #    #    #####  
 //
-// [三级界面]蜂鸣器调试
-int Debug_BUZ(void)
+// [三级界面]UART1调试
+int Debug_UART1(void)
 {
-    Debug_BUZ_UI();
-    uint8_t BUZ_flag = 0;
+    Debug_UART1_UI();
+
+    const char *words[] = {"AAA", "BBB", "CCC", "DDD", "EEE", "FFF"};
+    const int num_words = 6;
+    int window_start = 0;
+
+    #define PARSE_BUF_SIZE 128
+    uint8_t rx_ring[PARSE_BUF_SIZE];
+    int rx_pos = 0;
 
     while(1)
     {
-        /* 按键处理*/   
-        if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE)) 
+        if (Key_Check(KEY_NAME_CONFIRM, KEY_SINGLE))
         {
-            BUZ_flag = 1 - BUZ_flag;
-            if (BUZ_flag)
+            char send_buf[64];
+            int len = snprintf(send_buf, sizeof(send_buf), "[%s,%s,%s]\n",
+                     words[window_start % num_words],
+                     words[(window_start + 1) % num_words],
+                     words[(window_start + 2) % num_words]);
+            uart1_send((uint8*)send_buf, len);
+
+            ips200_Printf(30, 32, "[%s,%s,%s]\\n  ",
+                     words[window_start % num_words],
+                     words[(window_start + 1) % num_words],
+                     words[(window_start + 2) % num_words]);
+
+            window_start = (window_start + 1) % num_words;
+        }
+        else if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
+        {
+            return 0;
+        }
+
+        {
+            int n = uart1_recv(rx_ring + rx_pos, sizeof(rx_ring) - rx_pos - 1);
+            if (n > 0)
             {
-                // 开启蜂鸣器
-                gpio_set_level(BEEP_DEFINE, 0x1);
-                ips200_show_string(10 ,32 , "ON ");
-            }
-            else
-            {
-                // 关闭蜂鸣器
-                gpio_set_level(BEEP_DEFINE, 0x0);
-                ips200_show_string(10 ,32 , "OFF");
+                rx_pos += n;
+                rx_ring[rx_pos] = 0;
+
+                {
+                    char rx_display[64];
+                    int j = 0;
+                    for (int i = 0; rx_ring[i] && j < (int)sizeof(rx_display) - 2; i++)
+                    {
+                        if (rx_ring[i] == '\n')
+                        {
+                            rx_display[j++] = '\\';
+                            rx_display[j++] = 'n';
+                        }
+                        else if (rx_ring[i] == '\r')
+                        {
+                            rx_display[j++] = '\\';
+                            rx_display[j++] = 'r';
+                        }
+                        else
+                        {
+                            rx_display[j++] = rx_ring[i];
+                        }
+                    }
+                    rx_display[j] = '\0';
+                    ips200_Printf(30, 64, "%-20s", rx_display);
+                }
+
+                char *end = strchr((char*)rx_ring, '\n');
+                if (end)
+                {
+                    *end = 0;
+
+                    char *start = strchr((char*)rx_ring, '[');
+                    char *stop  = strchr((char*)rx_ring, ']');
+                    if (start && stop && stop > start)
+                    {
+                        char parse_buf[PARSE_BUF_SIZE];
+                        int len = stop - start - 1;
+                        if (len >= PARSE_BUF_SIZE) len = PARSE_BUF_SIZE - 1;
+                        memcpy(parse_buf, start + 1, len);
+                        parse_buf[len] = '\0';
+
+                        char *ch1 = strtok(parse_buf, ",");
+                        char *ch2 = strtok(NULL, ",");
+                        char *ch3 = strtok(NULL, ",");
+
+                        ips200_Printf(40, 112, "%-10s", ch1 ? ch1 : "");
+                        ips200_Printf(40, 128, "%-10s", ch2 ? ch2 : "");
+                        ips200_Printf(40, 144, "%-10s", ch3 ? ch3 : "");
+                    }
+
+                    int remain = rx_pos - (end + 1 - (char*)rx_ring);
+                    if (remain > 0)
+                    {
+                        memmove(rx_ring, end + 1, remain);
+                        rx_pos = remain;
+                    }
+                    else
+                    {
+                        rx_pos = 0;
+                    }
+                }
             }
         }
-        else if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
-        {
-            // 返回上一级界面
-            return 0;   
-        }
+
+        system_delay_ms(10);
     }
 }
 
