@@ -4,9 +4,9 @@
 #include "zf_common_typedef.h"
 #include <opencv2/opencv.hpp>
 
-#define UVC_WIDTH   160
-#define UVC_HEIGHT  120
-#define UVC_FPS     30
+#define UVC_WIDTH   640
+#define UVC_HEIGHT  480
+#define UVC_FPS     5
 
 int8 uvc_camera_init(const char *path);
 int8 wait_image_refresh();

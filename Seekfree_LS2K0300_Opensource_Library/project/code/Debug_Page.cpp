@@ -44,17 +44,11 @@ void Debug_UART1_UI(void)
 // [三级界面]UVC摄像头的二维码识别调试界面
 void Debug_UVC_QR_UI(void)
 {
-    ips200_show_string(8  ,0  , "[DEBUG]-UVC-QR");
-    ips200_show_string(0  ,16 , "==============================");
-    // 下面的区域将被UVC回传的图像覆盖
 }
 
 // [三级界面]UVC摄像头的跟踪调试界面
 void Debug_UVC_TRACK_UI(void)
 {
-    ips200_show_string(8  ,0  , "[DEBUG]-UVC-TRACK");
-    ips200_show_string(0  ,16 , "==============================");
-    // 下面的区域将被UVC回传的图像覆盖
 }
 
 // [三级界面]舵机(PCA9685驱动)调试界面
@@ -334,18 +328,22 @@ int Debug_UART1(void)
 int Debug_UVC_QR(void)
 {
     Debug_UVC_QR_UI();
+    int frame_skip = 0;
 
     while(1)
     {
         if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
         {
-            // 恢复默认颜色
             ips200_set_pen_color(RGB565_RED);
-            // 返回上一级界面
-            return 0;   
+            return 0;
         }
-        
-        QR_process();
+        frame_skip++;
+        if (frame_skip >= 6) {
+            frame_skip = 0;
+            QR_process();
+        } else {
+            wait_image_refresh();
+        }
     }
 }
 
@@ -359,18 +357,22 @@ int Debug_UVC_QR(void)
 int Debug_UVC_TRACK(void)
 {
     Debug_UVC_TRACK_UI();
+    int frame_skip = 0;
 
     while(1)
     {
         if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
         {
-            // 恢复默认颜色
             ips200_set_pen_color(RGB565_RED);
-            // 返回上一级界面
             return 0;   
         }
-        object_tracking();  // 红色物块跟踪显示
-        // coordinate_transformation();  // 坐标转换显示
+        frame_skip++;
+        if (frame_skip >= 6) {
+            frame_skip = 0;
+            object_tracking();
+        } else {
+            wait_image_refresh_rgb();
+        }
     }
 }
 

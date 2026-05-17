@@ -283,6 +283,9 @@ void ips200_init(const char *path)
     ips200_width = fb_var.xres;
     ips200_height = fb_var.yres;
 
+    printf("ips200 fb resolution: %dx%d, line_length=%d\n",
+           ips200_width, ips200_height, fb_fix.line_length);
+
     /* 将显示缓冲区映射到进程地址空间 */
     screen_base = (unsigned short *)mmap(NULL, screen_size, PROT_WRITE, MAP_SHARED, fd, 0);
     if (MAP_FAILED == (void *)screen_base) {

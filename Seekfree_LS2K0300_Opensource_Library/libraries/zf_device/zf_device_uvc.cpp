@@ -36,7 +36,7 @@ int8 uvc_camera_init(const char *path)
         printf("find uvc camera Successfully.\r\n");
     }
 
-    cap.set(CAP_PROP_FOURCC, VideoWriter::fourcc('M', 'J', 'P', 'G'));  // 设置格式
+    cap.set(CAP_PROP_FOURCC, VideoWriter::fourcc('Y', 'U', 'Y', 'V'));  // 设置格式为YUYV（摄像头原生）
     cap.set(CAP_PROP_FRAME_WIDTH, UVC_WIDTH);                           // 设置摄像头宽度
     cap.set(CAP_PROP_FRAME_HEIGHT, UVC_HEIGHT);                         // 设置摄像头高度
     cap.set(CAP_PROP_FPS, UVC_FPS);                                     // 显示屏幕帧率
