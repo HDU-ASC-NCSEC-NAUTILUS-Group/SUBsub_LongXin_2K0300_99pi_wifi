@@ -328,51 +328,37 @@ int Debug_UART1(void)
 int Debug_UVC_QR(void)
 {
     Debug_UVC_QR_UI();
-    int frame_skip = 0;
 
     while(1)
     {
-        if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
+        if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
         {
-            ips200_set_pen_color(RGB565_RED);
             return 0;
         }
-        frame_skip++;
-        if (frame_skip >= 6) {
-            frame_skip = 0;
-            QR_process();
-        } else {
-            wait_image_refresh();
-        }
+
+        QR_process();
     }
 }
 
-// #   #  #   #   ####         #####  ####    ###    ####  #   #  
-// #   #  #   #  #               #    #   #  #   #  #      #  #   
-// #   #  #   #  #       ###     #    ####   #####  #      ###    
-// #   #   # #   #               #    #  #   #   #  #      #  #   
-//  ###     #     ####           #    #   #  #   #   ####  #   #  
+//   #   #  #   #   ####         #####  ####    ###    ####  #   #
+//   #   #  #   #  #               #    #   #  #   #  #      #  #
+//   #   #  #   #  #       ###     #    ####   #####  #      ###
+//   #   #   # #   #               #    #  #   #   #  #      #  #
+//    ###     #     ####           #    #   #  #   #   ####  #   #
 //
 // [三级界面]物块跟踪调试
 int Debug_UVC_TRACK(void)
 {
     Debug_UVC_TRACK_UI();
-    int frame_skip = 0;
 
     while(1)
     {
-        if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
+        if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
         {
-            ips200_set_pen_color(RGB565_RED);
-            return 0;   
+            return 0;
         }
-        frame_skip++;
-        if (frame_skip >= 6) {
-            frame_skip = 0;
-            object_tracking();
-        } else {
-            wait_image_refresh_rgb();
-        }
+        
+        object_tracking();
     }
 }
 

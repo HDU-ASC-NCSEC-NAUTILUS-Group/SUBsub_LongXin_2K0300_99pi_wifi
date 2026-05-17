@@ -26,16 +26,21 @@ const int text_y = SCREEN_HEIGHT - 16;
 float real_x, real_y;
 
 // 二维码解码处理
-void QR_process(void)
+int QR_process(void)
 {
+    static int frame_count = 0;
 
-    if(wait_image_refresh() < 0)
-    {
-        return;
+    if (wait_image_refresh() < 0) {
+        return 0;
     }
 
     if (frame_rgay.empty() || rgay_image == nullptr) {
-        return;
+        return 0;
+    }
+
+    frame_count++;
+    if (frame_count % 6 != 0) {
+        return 0;
     }
 
     cv::Mat frame_rotated;
@@ -55,6 +60,8 @@ void QR_process(void)
         ips200_show_string(text_x, text_y, "No QR code");
         gpio_set_level(BEEP, 0x0);
     }
+
+    return 1;
 }
 
 // 红色物块检测函数：输入 BGR 图像，返回质心坐标（若未检测到则返回 (-1,-1)）
@@ -106,11 +113,17 @@ int16_t coordinate_x = 0;
 int16_t coordinate_y = 0;
 
 //红色物块跟踪函数
-void object_tracking(void)
+int object_tracking(void)
 {
+    static int frame_count = 0;
+
     if (wait_image_refresh_rgb() < 0) {
-        printf("摄像头采集失败，退出\n");
-        exit(0);
+        return 0;
+    }
+
+    frame_count++;
+    if (frame_count % 6 != 0) {
+        return 0;
     }
 
     cv::Point2i red_center = detect_red_object(frame_rgb);
@@ -131,6 +144,8 @@ void object_tracking(void)
 
     coordinate_x = red_center.x;
     coordinate_y = red_center.y;
+
+    return 1;
 }
 
 void coordinate_transformation(void)

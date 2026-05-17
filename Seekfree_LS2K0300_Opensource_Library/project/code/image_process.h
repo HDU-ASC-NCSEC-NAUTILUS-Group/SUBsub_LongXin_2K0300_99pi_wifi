@@ -3,8 +3,9 @@
 
 
 //UVC摄像头识别相关函数
-void QR_process(void);
-void object_tracking(void);
+// 返回1表示本帧处理了图像, 返回0表示跳过或错误
+int QR_process(void);
+int object_tracking(void);
 void coordinate_transformation(void);
 
 
