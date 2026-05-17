@@ -12,6 +12,18 @@
 #define SCREEN_WIDTH  240
 #define SCREEN_HEIGHT 320
 
+// 启用后图像处理使用 1/2 分辨率 (320x240)，减少约60-70% OpenCV 运算开销
+// 注释掉即恢复全分辨率处理 (640x480)
+#define UVC_HALF_RESOLUTION
+
+#ifdef UVC_HALF_RESOLUTION
+#define PROC_WIDTH   320
+#define PROC_HEIGHT  240
+#else
+#define PROC_WIDTH   UVC_WIDTH
+#define PROC_HEIGHT  UVC_HEIGHT
+#endif
+
 //ips图像显示外部变量引用
 extern uint16 ips200_pencolor;
 extern cv::Mat frame_rgay;
@@ -43,13 +55,25 @@ int QR_process(void)
         return 0;
     }
 
+    cv::Mat frame_gray_proc;
+#ifdef UVC_HALF_RESOLUTION
+    cv::resize(frame_rgay, frame_gray_proc, cv::Size(PROC_WIDTH, PROC_HEIGHT), 0, 0, cv::INTER_NEAREST);
+#else
+    frame_gray_proc = frame_rgay;
+#endif
+
     cv::Mat frame_rotated;
-    cv::rotate(frame_rgay, frame_rotated, cv::ROTATE_90_CLOCKWISE);
+    cv::rotate(frame_gray_proc, frame_rotated, cv::ROTATE_90_CLOCKWISE);
+
+#ifdef UVC_HALF_RESOLUTION
+    ips200_show_gray_image(0, 0, frame_rotated.ptr(0), SCREEN_WIDTH, SCREEN_HEIGHT);
+#else
     cv::Mat frame_gray_display;
     cv::resize(frame_rotated, frame_gray_display, cv::Size(SCREEN_WIDTH, SCREEN_HEIGHT), 0, 0, cv::INTER_NEAREST);
     ips200_show_gray_image(0, 0, frame_gray_display.ptr(0), SCREEN_WIDTH, SCREEN_HEIGHT);
+#endif
 
-    std::string qr_data = qrDecoder.detectAndDecode(frame_rgay);
+    std::string qr_data = qrDecoder.detectAndDecode(frame_gray_proc);
 
     if (!qr_data.empty()) {
         char buf[64];
@@ -126,13 +150,25 @@ int object_tracking(void)
         return 0;
     }
 
-    cv::Point2i red_center = detect_red_object(frame_rgb);
+    cv::Mat frame_proc;
+#ifdef UVC_HALF_RESOLUTION
+    cv::resize(frame_rgb, frame_proc, cv::Size(PROC_WIDTH, PROC_HEIGHT), 0, 0, cv::INTER_NEAREST);
+#else
+    frame_proc = frame_rgb;
+#endif
+
+    cv::Point2i red_center = detect_red_object(frame_proc);
 
     cv::Mat frame_rotated;
-    cv::rotate(frame_rgb, frame_rotated, cv::ROTATE_90_CLOCKWISE);
+    cv::rotate(frame_proc, frame_rotated, cv::ROTATE_90_CLOCKWISE);
+
+#ifdef UVC_HALF_RESOLUTION
+    ips200_show_rgb_image(0, 0, frame_rotated.ptr(0), SCREEN_WIDTH, SCREEN_HEIGHT);
+#else
     cv::Mat frame_display;
     cv::resize(frame_rotated, frame_display, cv::Size(SCREEN_WIDTH, SCREEN_HEIGHT), 0, 0, cv::INTER_NEAREST);
     ips200_show_rgb_image(0, 0, frame_display.ptr(0), SCREEN_WIDTH, SCREEN_HEIGHT);
+#endif
 
     char display_buf[64];
     if (red_center.x != -1 && red_center.y != -1) {
