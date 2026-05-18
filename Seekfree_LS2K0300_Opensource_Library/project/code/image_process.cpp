@@ -1,3 +1,6 @@
+/*******************************************************************************
+* UVC摄像头设备进程文件
+*******************************************************************************/
 #include "zf_common_headfile.h"
 #include "opencv2/opencv.hpp"
 #include <opencv2/imgproc.hpp>
@@ -9,6 +12,10 @@
 
 #define BEEP    "/dev/zf_driver_gpio_beep"
 
+/**********************************************************/
+/*[S] 图像本体定义 [S]--------------------------------------*/
+/**********************************************************/
+
 #define SCREEN_WIDTH  240
 #define SCREEN_HEIGHT 320
 
@@ -17,25 +24,32 @@
 #define UVC_HALF_RESOLUTION
 
 #ifdef UVC_HALF_RESOLUTION
-#define PROC_WIDTH   320
-#define PROC_HEIGHT  240
+    #define PROC_WIDTH   320
+    #define PROC_HEIGHT  240
 #else
-#define PROC_WIDTH   UVC_WIDTH
-#define PROC_HEIGHT  UVC_HEIGHT
+    #define PROC_WIDTH   UVC_WIDTH
+    #define PROC_HEIGHT  UVC_HEIGHT
 #endif
 
 //ips图像显示外部变量引用
-extern uint16 ips200_pencolor;
 extern cv::Mat frame_rgay;
 
-//二维码相关数据初始化
-cv::QRCodeDetector qrDecoder;
+/**********************************************************/
+/*--------------------------------------[E] 图像本体定义 [E]*/
+/**********************************************************/
+
 
 // 文字叠加区域（图像底部）
 const int text_x = 0;
 const int text_y = SCREEN_HEIGHT - 16;
 
-float real_x, real_y;
+
+/**********************************************************/
+/*[S] 二维码处理 [S]----------------------------------------*/
+/**********************************************************/
+
+//二维码相关数据初始化
+cv::QRCodeDetector qrDecoder;
 
 // 二维码解码处理
 int QR_process(void)
@@ -84,9 +98,17 @@ int QR_process(void)
         ips200_show_string(text_x, text_y, "No QR code");
         gpio_set_level(BEEP, 0x0);
     }
-
+    
     return 1;
 }
+/**********************************************************/
+/*----------------------------------------[E] 二维码处理 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 物块跟踪 [S]-----------------------------------------*/
+/**********************************************************/
 
 // 红色物块检测函数：输入 BGR 图像，返回质心坐标（若未检测到则返回 (-1,-1)）
 static cv::Point2i detect_red_object(const cv::Mat &frame_bgr)
@@ -159,6 +181,13 @@ int object_tracking(void)
 
     cv::Point2i red_center = detect_red_object(frame_proc);
 
+#ifdef UVC_HALF_RESOLUTION
+    if (red_center.x != -1 && red_center.y != -1) {
+        red_center.x *= 2;
+        red_center.y *= 2;
+    }
+#endif
+
     cv::Mat frame_rotated;
     cv::rotate(frame_proc, frame_rotated, cv::ROTATE_90_CLOCKWISE);
 
@@ -183,6 +212,16 @@ int object_tracking(void)
 
     return 1;
 }
+/**********************************************************/
+/*-----------------------------------------[E] 物块跟踪 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 坐标 [S]---------------------------------------------*/
+/**********************************************************/
+
+float real_x, real_y;
 
 void coordinate_transformation(void)
 {
@@ -243,3 +282,6 @@ void coordinate_transformation(void)
     // 可选：控制台输出（便于调试）
     // printf("Pixel(%d,%d) -> Real(%.2f,%.2f) cm\n", coordinate_x, coordinate_y, real_x, real_y);
 }
+/**********************************************************/
+/*---------------------------------------------[E] 坐标 [E]*/
+/**********************************************************/
