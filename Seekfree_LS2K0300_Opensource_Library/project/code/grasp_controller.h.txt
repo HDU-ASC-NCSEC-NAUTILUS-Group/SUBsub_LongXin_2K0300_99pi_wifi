@@ -5,24 +5,24 @@
 #define __GRASP_CONTROLLER_H__
 
 
-// 定义主板上舵机频率  请务必注意范围 50-300
-// 如果要修改，需要直接修改设备树。
-#define SERVO_MOTOR_FREQ            (servo_pwm_info.freq)                       
+// // 定义主板上舵机频率  请务必注意范围 50-300
+// // 如果要修改，需要直接修改设备树。
+// #define SERVO_MOTOR_FREQ            (servo_pwm_info.freq)                       
 
-// 在设备树中，默认设置的10000。如果要修改，需要直接修改设备树。
-#define PWM_DUTY_MAX                (servo_pwm_info.duty_max)      
+// // 在设备树中，默认设置的10000。如果要修改，需要直接修改设备树。
+// #define PWM_DUTY_MAX                (servo_pwm_info.duty_max)      
 
 // 定义主板上舵机活动范围 角度                                                     
 #define SERVO_MOTOR_L_MAX           (0)                       
 #define SERVO_MOTOR_R_MAX           (180)      
 
-#define SERVO_MOTOR_DUTY(x)         ((float)PWM_DUTY_MAX/(1000.0/(float)SERVO_MOTOR_FREQ)*(0.5+(float)(x)/90.0))
+// #define SERVO_MOTOR_DUTY(x)         ((float)PWM_DUTY_MAX/(1000.0/(float)SERVO_MOTOR_FREQ)*(0.5+(float)(x)/90.0))
 
-// 定义驱动路径，该路径由设备树生成
-#define SERVO_MOTOR1_PWM            "/dev/zf_device_pwm_servo"
-#define SERVO_MOTOR2_PWM            "/dev/zf_device_pwm_servo2" // 关节2
-#define SERVO_MOTOR3_PWM            "/dev/zf_device_pwm_servo3" // 关节3
-#define SERVO_MOTOR4_PWM            "/dev/zf_device_pwm_servo4" // 夹爪     
+// // 定义驱动路径，该路径由设备树生成
+// #define SERVO_MOTOR1_PWM            "/dev/zf_device_pwm_servo"
+// #define SERVO_MOTOR2_PWM            "/dev/zf_device_pwm_servo2" // 关节2
+// #define SERVO_MOTOR3_PWM            "/dev/zf_device_pwm_servo3" // 关节3
+// #define SERVO_MOTOR4_PWM            "/dev/zf_device_pwm_servo4" // 夹爪     
 
 // 坐标外部声明
 extern int16_t coordinate_x;
@@ -85,7 +85,6 @@ void servo_control(void);
 static int16_t calculate_angle_0(void);
 static int16_t calculate_angle_1(void);
 static int16_t calculate_angle_2(void);
-
 
 
 #endif

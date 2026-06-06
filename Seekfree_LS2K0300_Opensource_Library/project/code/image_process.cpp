@@ -39,11 +39,6 @@ extern cv::Mat frame_rgay;
 /**********************************************************/
 
 
-// 文字叠加区域（图像底部）
-const int text_x = 0;
-const int text_y = SCREEN_HEIGHT - 16;
-
-
 /**********************************************************/
 /*[S] 二维码处理 [S]----------------------------------------*/
 /**********************************************************/
@@ -92,10 +87,10 @@ int QR_process(void)
     if (!qr_data.empty()) {
         char buf[64];
         snprintf(buf, sizeof(buf), "QR: %.40s", qr_data.c_str());
-        ips200_show_string(text_x, text_y, buf);
+        ips200_show_string(0, SCREEN_HEIGHT - 16, buf);
         gpio_set_level(BEEP, 0x1);
     } else {
-        ips200_show_string(text_x, text_y, "No QR code");
+        ips200_show_string(0, SCREEN_HEIGHT - 16, "No QR code");
         gpio_set_level(BEEP, 0x0);
     }
     
@@ -201,11 +196,11 @@ int object_tracking(void)
 
     char display_buf[64];
     if (red_center.x != -1 && red_center.y != -1) {
-        snprintf(display_buf, sizeof(display_buf), "Red: (%3d,%3d)", red_center.x, red_center.y);
+        snprintf(display_buf, sizeof(display_buf), "Red:(%3d,%3d)", red_center.x, red_center.y);
     } else {
         snprintf(display_buf, sizeof(display_buf), "No red object");
     }
-    ips200_show_string(text_x, text_y, display_buf);
+    ips200_show_string(0, SCREEN_HEIGHT - 16, display_buf);
 
     coordinate_x = red_center.x;
     coordinate_y = red_center.y;
@@ -274,7 +269,7 @@ void coordinate_transformation(void)
 
     // ---------- 5. （可选）在屏幕文本区显示物理坐标 ----------
     char buf[48];
-    snprintf(buf, sizeof(buf), "Real: (%.2f, %.2f) cm", real_x, real_y);
+    snprintf(buf, sizeof(buf), "Real:(%.2f,%.2f)cm", real_x, real_y);
     ips200_show_string(0, SCREEN_HEIGHT - 32, buf);
 
     // 可选：控制台输出（便于调试）

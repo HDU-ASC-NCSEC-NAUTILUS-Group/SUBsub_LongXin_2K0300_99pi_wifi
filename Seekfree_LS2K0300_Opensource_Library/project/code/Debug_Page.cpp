@@ -31,14 +31,15 @@ void Debug_UART1_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-UART1");
     ips200_show_string(0  ,16 , "==============================");
-    ips200_show_string(0  ,32 , "TX:");
+    ips200_show_string(0  ,32 , "  [Press CONFIRM to send TX]");
+    ips200_show_string(0  ,48 , "TX:");
     // 占位(必要时上一行溢出的字符会切割到这一行显示)
-    ips200_show_string(0  ,64 , "RX:");
+    ips200_show_string(0  ,80 , "RX:");
     // 占位(必要时上一行溢出的字符会切割到这一行显示)
     // 占位
-    ips200_show_string(0  ,112, "CH1:"); // 切分到的第一个字符
-    ips200_show_string(0  ,128, "CH2:"); // 切分到的第二个字符(如果有)
-    ips200_show_string(0  ,144, "CH3:"); // 切分到的第三个字符(如果有)
+    ips200_show_string(0  ,128, "CH1:"); // 切分到的第一个字符
+    ips200_show_string(0  ,144, "CH2:"); // 切分到的第二个字符(如果有)
+    ips200_show_string(0  ,160, "CH3:"); // 切分到的第三个字符(如果有)
 }
 
 // [三级界面]UVC摄像头的二维码识别调试界面
@@ -224,6 +225,10 @@ int Debug_UART1(void)
 
     while(1)
     {
+        // 消费掉按键判定
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+
         if (Key_Check(KEY_NAME_CONFIRM, KEY_SINGLE))
         {
             char send_buf[64];
@@ -233,7 +238,7 @@ int Debug_UART1(void)
                      words[(window_start + 2) % num_words]);
             uart1_send((uint8*)send_buf, len);
 
-            ips200_Printf(30, 32, "[%s,%s,%s]\\n  ",
+            ips200_Printf(30, 48, "[%s,%s,%s]\\n  ",
                      words[window_start % num_words],
                      words[(window_start + 1) % num_words],
                      words[(window_start + 2) % num_words]);
@@ -273,7 +278,7 @@ int Debug_UART1(void)
                         }
                     }
                     rx_display[j] = '\0';
-                    ips200_Printf(30, 64, "%-20s", rx_display);
+                    ips200_Printf(30, 80, "%-20s", rx_display);
                 }
 
                 char *end = strchr((char*)rx_ring, '\n');
@@ -295,9 +300,9 @@ int Debug_UART1(void)
                         char *ch2 = strtok(NULL, ",");
                         char *ch3 = strtok(NULL, ",");
 
-                        ips200_Printf(40, 112, "%-10s", ch1 ? ch1 : "");
-                        ips200_Printf(40, 128, "%-10s", ch2 ? ch2 : "");
-                        ips200_Printf(40, 144, "%-10s", ch3 ? ch3 : "");
+                        ips200_Printf(40, 128, "%-10s", ch1 ? ch1 : "");
+                        ips200_Printf(40, 144, "%-10s", ch2 ? ch2 : "");
+                        ips200_Printf(40, 160, "%-10s", ch3 ? ch3 : "");
                     }
 
                     int remain = rx_pos - (end + 1 - (char*)rx_ring);
@@ -331,6 +336,11 @@ int Debug_UVC_QR(void)
 
     while(1)
     {
+        // 消费掉按键判定
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+        Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE);
+
         if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
         {
             return 0;
@@ -353,12 +363,19 @@ int Debug_UVC_TRACK(void)
 
     while(1)
     {
+        // 消费掉按键判定
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+        Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE);
+
         if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
         {
             return 0;
         }
         
-        object_tracking();
+        if (object_tracking()) {
+            coordinate_transformation();
+        }
     }
 }
 
