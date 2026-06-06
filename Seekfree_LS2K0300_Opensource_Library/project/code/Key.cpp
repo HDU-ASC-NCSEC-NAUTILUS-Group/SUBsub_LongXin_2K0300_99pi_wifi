@@ -18,30 +18,30 @@ uint8_t Key_Flag[KEY_COUNT];//不同的位表示不同的事件标志位
 
 int8_t Key_GetState(uint8_t n)
 {
-	if (n == KEY_NAME_UP)
+	if (n == KEY_1)
 	{
-		if (gpio_get_level(KEY_DEFINE_UP) == 0)//按下
+		if (gpio_get_level(KEY_DEFINE_1) == 0)//按下
 		{
 		    return KEY_PRESSED;//返回按下
 		}
 	}
-	else if (n == KEY_NAME_DOWN)
+	else if (n == KEY_2)
 	{
-		if (gpio_get_level(KEY_DEFINE_DOWN) == 0)//按下
+		if (gpio_get_level(KEY_DEFINE_2) == 0)//按下
 		{
 		    return KEY_PRESSED;
 		}
 	}
-	else if (n == KEY_NAME_CONFIRM)  
+	else if (n == KEY_3)  
 	{
-		if (gpio_get_level(KEY_DEFINE_CONFIRM) == 0)//按下
+		if (gpio_get_level(KEY_DEFINE_3) == 0)//按下
 		{
 		    return KEY_PRESSED;
 		}
 	}
-	else if (n == KEY_NAME_BACK)
+	else if (n == KEY_4)
 	{
-		if (gpio_get_level(KEY_DEFINE_BACK) == 0)//按下
+		if (gpio_get_level(KEY_DEFINE_4) == 0)//按下
 		{
 		    return KEY_PRESSED;
 		}
