@@ -24,8 +24,8 @@
 #define UVC_HALF_RESOLUTION
 
 #ifdef UVC_HALF_RESOLUTION
-    #define PROC_WIDTH   320
-    #define PROC_HEIGHT  240
+    #define PROC_WIDTH   (UVC_WIDTH / 2)
+    #define PROC_HEIGHT  (UVC_HEIGHT / 2)
 #else
     #define PROC_WIDTH   UVC_WIDTH
     #define PROC_HEIGHT  UVC_HEIGHT
@@ -253,7 +253,6 @@ void coordinate_transformation(void)
     
     // 若未检测到红色物体（坐标无效），则物理坐标也设为无效值（例如 -1000）
     if (coordinate_x == -1 || coordinate_y == -1) {
-        extern float real_x, real_y;
         real_x = -1000.0f;
         real_y = -1000.0f;
         return;
@@ -270,7 +269,6 @@ void coordinate_transformation(void)
                        affine_matrix.at<double>(1,2);
 
     // ---------- 4. 存储物理坐标到全局变量 ----------
-    extern float real_x, real_y;
     real_x = physical_point.x;
     real_y = physical_point.y;
 

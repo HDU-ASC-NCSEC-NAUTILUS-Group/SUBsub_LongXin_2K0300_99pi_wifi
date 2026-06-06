@@ -43,10 +43,10 @@
 #define KEY_3		            2	
 #define KEY_4			        3	
 
-#define KEY_NAME_UP				KEY_1	
-#define KEY_NAME_DOWN			KEY_2	
-#define KEY_NAME_CONFIRM		KEY_3	
-#define KEY_NAME_BACK			KEY_4	
+#define KEY_NAME_UP				KEY_1
+#define KEY_NAME_DOWN			KEY_2
+#define KEY_NAME_CONFIRM		KEY_3
+#define KEY_NAME_BACK			KEY_4
 
 //用宏定义替换按键标志位的位掩码，使程序的意义更清晰
 #define KEY_HOLD				0x01

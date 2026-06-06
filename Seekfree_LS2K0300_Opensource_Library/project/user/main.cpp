@@ -103,6 +103,7 @@ int main(int, char**)
     pit_timer_200ms = new timer_fd(200, pit_callback_200ms);
     pit_timer_200ms->start();  
 
+
     while(1)
     {
         Menu_Show();
