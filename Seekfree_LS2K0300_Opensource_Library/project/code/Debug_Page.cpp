@@ -483,7 +483,7 @@ int Debug_Servo(void)
                     }
                     Angle[Debug_Servo_flag_temp - 1] = temp;
 
-                    Set_Servo(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
+                    Servo_Set_Angle(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
                 }                     
             }
             else if (Key_Check(KEY_NAME_DOWN,KEY_SINGLE)) 
@@ -506,7 +506,7 @@ int Debug_Servo(void)
                     }
                     Angle[Debug_Servo_flag_temp - 1] = temp;
 
-                    Set_Servo(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
+                    Servo_Set_Angle(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
                 }                            
             }
             else if ((Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE)) || (Key_Check(KEY_NAME_BACK,KEY_SINGLE)))
