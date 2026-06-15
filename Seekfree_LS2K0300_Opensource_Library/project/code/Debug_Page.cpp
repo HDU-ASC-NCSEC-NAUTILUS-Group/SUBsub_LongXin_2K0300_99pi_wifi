@@ -471,7 +471,7 @@ int Debug_Servo(void)
                 {
                     // 中间计算变量temp
                     int16_t temp = Angle[Debug_Servo_flag_temp - 1];
-                    temp += 3;
+                    temp += 5;
                     // 边界处理
                     if (temp > 180)
                     {
@@ -494,7 +494,7 @@ int Debug_Servo(void)
                 {
                     // 中间计算变量temp
                     int16_t temp = Angle[Debug_Servo_flag_temp - 1];
-                    temp -= 3;
+                    temp -= 5;
                     // 边界处理
                     if (temp > 180)
                     {
