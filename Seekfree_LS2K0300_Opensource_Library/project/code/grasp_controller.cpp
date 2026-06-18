@@ -5,13 +5,15 @@
 float x_result = 0.0f, y_result = 0.0f;
 
 // 初始化为复位角度
-float target_angle[JOINT_COUNT] = {
-    [JOINT_BASE]          = ANGLE_ZERO_BASE,
-    [JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
-    [JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
-    [JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
-    [JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
-};
+float target_angle[JOINT_COUNT]
+//  = {
+//     [JOINT_BASE]          = ANGLE_ZERO_BASE,
+//     [JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
+//     [JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
+//     [JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
+//     [JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
+// }
+;
 float current_angle[JOINT_COUNT];  // 当前角度(实际上是无法直接读取到实际角度的，只是方便状态控制)
 
 /**********************************************************/
@@ -43,18 +45,18 @@ int grasp_compute_angles(void)
     float a1, a2;           // α₁=一大臂与竖直方向夹角, α₂=二大臂与一大臂延长线夹角
     float beta;             // 目标向量(底座→物体)与竖直方向的夹角
     float gamma;            // 一大臂与目标向量的夹角(由L1和L2几何关系求得)
-    float base_deg;         // 底座目标角度(0~180)
-    float arm1_deg;         // 一大臂目标角度(0~180)
-    float arm2_deg;         // 二大臂目标角度(0~180)
+    float base_tar;         // 底座目标角度(0~180)
+    float arm1_tar;         // 一大臂目标角度(0~180)
+    float arm2_tar;         // 二大臂目标角度(0~180)
 
     // ------ 1. 底座方位计算 ------
     dx = x_result - BASE_X;
     dy = y_result - BASE_Y;
 
-    base_deg = 90.0f + (float)DIR_BASE * (float)(atan2((double)dx, (double)dy) * (180.0 / M_PI));
+    base_tar = 90.0f + (float)DIR_BASE * (float)(atan2((double)dx, (double)dy) * (180.0 / M_PI));
 
-    if (base_deg < 0.0f)   base_deg = 0.0f;
-    if (base_deg > 180.0f) base_deg = 180.0f;
+    if (base_tar < 0.0f)   base_tar = 0.0f;
+    if (base_tar > 180.0f) base_tar = 180.0f;
 
     // ------ 2. 机械臂平面内的二连杆 IK ------
     h_dist  = sqrtf(dx * dx + dy * dy);
@@ -77,18 +79,19 @@ int grasp_compute_angles(void)
     a1 = beta - gamma;
 
     // 转换为舵机角度 (90° = 竖直向上)
-    arm1_deg = 90.0f - (float)DIR_ARM_1 * a1 * (180.0f / (float)M_PI);
-    arm2_deg = 90.0f - (float)DIR_ARM_2 * a2 * (180.0f / (float)M_PI);
+    arm1_tar = 90.0f - (float)DIR_ARM_1 * a1 * (180.0f / (float)M_PI);
+    arm2_tar = 90.0f - (float)DIR_ARM_2 * a2 * (180.0f / (float)M_PI);
 
-    if (arm1_deg < 0.0f)   arm1_deg = 0.0f;
-    if (arm1_deg > 180.0f) arm1_deg = 180.0f;
-    if (arm2_deg < 0.0f)   arm2_deg = 0.0f;
-    if (arm2_deg > 180.0f) arm2_deg = 180.0f;
+    // 防止溢出
+    if (arm1_tar < 5.0f)   arm1_tar = 5.0f;
+    if (arm1_tar > 175.0f) arm1_tar = 175.0f;
+    if (arm2_tar < 5.0f)   arm2_tar = 5.0f;
+    if (arm2_tar > 175.0f) arm2_tar = 175.0f;
 
     // ------ 3. 写入全局目标角度 ------
-    target_angle[JOINT_BASE]  = base_deg;
-    target_angle[JOINT_ARM_1] = arm1_deg;
-    target_angle[JOINT_ARM_2] = arm2_deg;
+    target_angle[JOINT_BASE]  = base_tar;
+    target_angle[JOINT_ARM_1] = arm1_tar;
+    target_angle[JOINT_ARM_2] = arm2_tar;
 
     return 1;
 }
@@ -104,27 +107,36 @@ int grasp_compute_angles(void)
 /*[S] 舵机逐步运动 [S]--------------------------------------*/
 /**********************************************************/
 
-// ============ 运动状态机 ============
-#define INVALID_ANGLE   -999.0f
+#define INVALID_ANGLE   -999.0f             // 约定的无效数据
 
+// ============ 运动状态机 ============
 enum {
-    MOTION_IDLE   = 0,   // 空闲，等待新目标
-    MOTION_MOVING = 1,   // 运动中，逐帧推进
-    MOTION_DONE   = 2,   // 已完成
+    MOTION_IDLE   = 0,                      // 空闲，等待新目标
+    MOTION_MOVING = 1,                      // 运动中，逐帧推进
+    MOTION_DONE   = 2,                      // 已完成
 };
 
-static int motion_state = MOTION_IDLE;
-static float cached_target[JOINT_COUNT];   // 快照，屏蔽外部改动
-static float step_size[JOINT_COUNT];       // 每关节每步增量
-static int step_remain;                    // 剩余步数，倒计数
+static int motion_state = MOTION_IDLE;  
+static float cached_target[JOINT_COUNT] = {
+    INVALID_ANGLE,
+    INVALID_ANGLE,
+    INVALID_ANGLE,
+    INVALID_ANGLE,
+    INVALID_ANGLE
+};                                           // 快照，屏蔽外部改动
+static float step_size[JOINT_COUNT];        // 每关节每步增量
+static int step_remain;                     // 剩余步数，倒计数
 
 /**
  * servo_move_sync - 舵机运动状态机
  * @enable: 1=推进/启动, 0=中止
  *
  * 主循环中每轮调用一次，由 Servo_Set_Angle() 返回值决定实际推进节奏。
+ *
+ * 返回值: 1=所有关节运动完成, 0=运动中/空闲/中止/冷却期
+ *         用于推进上层状态机
  */
-void servo_move_sync(int enable)
+int servo_move_sync(int enable)
 {
     /* ===== 中止 ===== */
     if (enable == 0) {
@@ -134,48 +146,54 @@ void servo_move_sync(int enable)
             cached_target[j] = INVALID_ANGLE;
         }
         // Stop_Servo_All();  // 可选：立即停舵机
-        return;
+        return 0;
     }
 
-    /* ===== 检测目标变更，触发重启 ===== */
-    if (motion_state != MOTION_IDLE) {
-        for (int j = 0; j < JOINT_COUNT; j++) {
-            float diff = target_angle[j] - cached_target[j];
-            if (diff < -0.1f || diff > 0.1f) {
-                motion_state = MOTION_IDLE;   // 目标变了，放弃当前运动
-                break;
-            }
-        }
-    }
+    /* ===== 检测目标变更，触发重启（已禁用）=====
+     *
+     * 当前版本不自动中止：运动过程中即使 target_angle 被外部改写，
+     * 也会先把当前段走完。中途需要中止请显式调用 servo_move_sync(0)。
+     *
+     * 如需启用此特性，取消下方注释即可。
+     */
+    // if (motion_state != MOTION_IDLE) {
+    //     for (int j = 0; j < JOINT_COUNT; j++) {
+    //         float diff = target_angle[j] - cached_target[j];  // 当前目标与快照的偏差
+    //         if (diff < -0.1f || diff > 0.1f) {
+    //             motion_state = MOTION_IDLE;   // 目标变了，放弃当前运动
+    //             break;
+    //         }
+    //     }
+    // }
 
     /* ===== 空闲态：冻结目标，初始化 ===== */
     if (motion_state == MOTION_IDLE) {
-        int has_target = 0;
+        int has_target = 0;   // 是否有任一关节需要运动
         for (int j = 0; j < JOINT_COUNT; j++) {
             cached_target[j] = target_angle[j];
-            float error = cached_target[j] - current_angle[j];
-            float abs_err = (error < 0.0f) ? -error : error;
+            float error   = cached_target[j] - current_angle[j];   // 该关节需要走的总角度
+            float abs_err = (error < 0.0f) ? -error : error;       // |error|
             if (abs_err >= ANGLE_EPSILON) {
                 has_target = 1;
             }
-            step_size[j] = error / STEP_COUNT;
+            step_size[j] = error / JOINT_STEP_COUNT;   // 每步增量，可正可负
         }
 
         if (has_target) {
-            step_remain  = STEP_COUNT;
+            step_remain  = JOINT_STEP_COUNT;   // 剩余步数
             motion_state = MOTION_MOVING;
         }
-        return;
+        return 0;
     }
 
     /* ===== 运动中：尝试推进一步 ===== */
     if (motion_state == MOTION_MOVING) {
         int all_done = 1;    // 本轮所有关节是否都已到位
-        int any_sent = 0;    // 本轮是否至少发了一条指令
+        int any_sent = 0;    // 本轮是否至少发了一条 I2C 指令
 
         for (int j = 0; j < JOINT_COUNT; j++) {
-            float error = cached_target[j] - current_angle[j];
-            float abs_err = (error < 0.0f) ? -error : error;
+            float error   = cached_target[j] - current_angle[j];   // 该关节剩余角度
+            float abs_err = (error < 0.0f) ? -error : error;       // |error|
 
             if (abs_err < ANGLE_EPSILON) {
                 continue;     // 已到位，跳过
@@ -183,11 +201,9 @@ void servo_move_sync(int enable)
 
             all_done = 0;
 
-            // 计算本步的目标角度
-            float step_target = current_angle[j] + step_size[j];
-            // 最后几步直接拉到终值，避免浮点累积偏差
+            float step_target = current_angle[j] + step_size[j];   // 本步目标角度
             if (step_remain <= 1) {
-                step_target = cached_target[j];
+                step_target = cached_target[j];   // 最后一步直接拉到终值
             }
 
             if (Servo_Set_Angle(j, step_target)) {
@@ -206,14 +222,16 @@ void servo_move_sync(int enable)
         }
 
         if (!any_sent) {
-            return;   // 冷却期中，空过一轮
+            return 0;   // 冷却期中，空过一轮
         }
     }
 
     /* ===== 完成态：等待新目标 ===== */
     if (motion_state == MOTION_DONE) {
-        return;
+        return 1;   // 运动完成，通知上层
     }
+
+    return 0;
 }
 
 /**********************************************************/
