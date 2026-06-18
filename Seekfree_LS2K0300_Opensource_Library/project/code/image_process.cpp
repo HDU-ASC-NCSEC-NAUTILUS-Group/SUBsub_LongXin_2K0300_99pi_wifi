@@ -222,14 +222,14 @@ void coordinate_transformation(void)
 {
     // ---------- 1. 定义标定点（像素坐标 -> 物理坐标）----------
     static const cv::Point2f src_pts[3] = {
-        cv::Point2f(98, 306),   // 对应物理 (0, 28.5)
-        cv::Point2f(143, 156),   // 对应物理 (3.5, 27)
-        cv::Point2f(131, 393)    // 对应物理 (-2.5, 27.6)
+        cv::Point2f(496, 280),   // 对应物理 (0, 15)
+        cv::Point2f(430, 404),   // 对应物理 (3.5, 27)
+        cv::Point2f(216, 95)    // 对应物理 (-2.5, 27.6)
     };
     static const cv::Point2f dst_pts[3] = {
-        cv::Point2f(0, 28.5),
-        cv::Point2f(3.5f, 27.0f),
-        cv::Point2f(-2.5f, 27.6f)
+        cv::Point2f(0, 15),
+        cv::Point2f(-4.81f, 13.9f),
+        cv::Point2f(6.86f, 22.0f)
     };
 
     // 计算仿射变换矩阵（2x3），只计算一次并缓存
@@ -243,10 +243,8 @@ void coordinate_transformation(void)
     }
 
     // ---------- 2. 获取当前红色物块的像素坐标 ----------
-    // 注意：coordinate_x, coordinate_y 是在 object_tracking() 中赋值的全局变量
-    extern int16_t coordinate_x, coordinate_y;
+    // coordinate_x, coordinate_y 在文件顶部定义，object_tracking() 中赋值
     
-    // 若未检测到红色物体（坐标无效），则物理坐标也设为无效值（例如 -1000）
     if (coordinate_x == -1 || coordinate_y == -1) {
         real_x = -1000.0f;
         real_y = -1000.0f;

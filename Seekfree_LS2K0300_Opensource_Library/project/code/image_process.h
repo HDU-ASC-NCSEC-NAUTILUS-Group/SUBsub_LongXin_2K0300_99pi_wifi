@@ -11,5 +11,8 @@ int QR_process(void);
 int object_tracking(void);
 void coordinate_transformation(void);
 
+// 映射完成的物理坐标值
+extern float real_x, real_y;
+
 
 #endif

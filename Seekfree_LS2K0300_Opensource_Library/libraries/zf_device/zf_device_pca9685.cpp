@@ -233,7 +233,8 @@ void Servo_Tick(void)
 
     switch (g_sm_state) {
 
-    case SM_INIT_RESET:
+    // --- 复位阶段 ---
+    case SM_INIT_RESET:   // 打开 I2C，设置从机地址，写 MODE1=0x00
         g_fd = i2c_open(g_sm_i2c_dev);
         if (g_fd < 0) { g_sm_state = SM_ERROR; return; }
         if (i2c_set_slave(g_fd, g_sm_addr) < 0) {
@@ -244,34 +245,35 @@ void Servo_Tick(void)
         g_sm_state = SM_INIT_MODE2;
         break;
 
-    case SM_INIT_MODE2:
+    case SM_INIT_MODE2:   // 写 MODE2=OUTDRV（推挽输出）
         if (i2c_write_byte(g_fd, PCA9685_MODE2, PCA9685_MODE2_OUTDRV) < 0) {
             g_sm_state = SM_ERROR; return;
         }
         g_sm_state = SM_INIT_MODE1;
         break;
 
-    case SM_INIT_MODE1:
+    case SM_INIT_MODE1:   // 写 MODE1=AI|SLEEP（自动递增+休眠），然后等待 5ms 振荡器稳定
         if (i2c_write_byte(g_fd, PCA9685_MODE1, PCA9685_MODE1_AI | 0x01) < 0) {
             g_sm_state = SM_ERROR; return;
         }
-        sm_set_deadline(5000);   // 5ms 等待芯片稳定
+        sm_set_deadline(5000);
         g_sm_state = SM_INIT_DELAY;
         break;
 
-    case SM_INIT_DELAY:
+    case SM_INIT_DELAY:   // 等待 5ms 到期
         if (!sm_deadline_expired()) return;
         g_sm_state = SM_FREQ_READ;
         break;
 
-    case SM_FREQ_READ:
+    // --- 频率设置阶段 ---
+    case SM_FREQ_READ:    // 读取当前 MODE1，保存到 g_sm_oldmode
         if (i2c_read_byte(g_fd, PCA9685_MODE1, &g_sm_oldmode) < 0) {
             g_sm_state = SM_ERROR; return;
         }
         g_sm_state = SM_FREQ_SLEEP;
         break;
 
-    case SM_FREQ_SLEEP: {
+    case SM_FREQ_SLEEP: { // 写 MODE1=SLEEP（必须先休眠才能改 prescale）
         uint8 newmode = (g_sm_oldmode & ~PCA9685_MODE1_RESTART) | PCA9685_MODE1_SLEEP;
         if (i2c_write_byte(g_fd, PCA9685_MODE1, newmode) < 0) {
             g_sm_state = SM_ERROR; return;
@@ -280,7 +282,7 @@ void Servo_Tick(void)
         break;
     }
 
-    case SM_FREQ_PRESCALE:
+    case SM_FREQ_PRESCALE: // 计算 prescale 并写入 PRE_SCALE 寄存器
         prescaleval = (float)PCA9685_OSC_CLOCK
                     / ((float)PCA9685_PWM_RESOLUTION * (float)g_sm_freq);
         prescale = (int)(prescaleval + 0.5f) - 1;
@@ -292,29 +294,30 @@ void Servo_Tick(void)
         g_sm_state = SM_FREQ_WAKE;
         break;
 
-    case SM_FREQ_WAKE:
+    case SM_FREQ_WAKE:    // 写 MODE1=oldmode（退出休眠），然后等待 500μs 振荡器重新起振
         if (i2c_write_byte(g_fd, PCA9685_MODE1, g_sm_oldmode) < 0) {
             g_sm_state = SM_ERROR; return;
         }
-        sm_set_deadline(500);    // 500μs 等待振荡器稳定
+        sm_set_deadline(500);
         g_sm_state = SM_FREQ_DELAY;
         break;
 
-    case SM_FREQ_DELAY:
+    case SM_FREQ_DELAY:   // 等待 500μs 到期
         if (!sm_deadline_expired()) return;
         g_sm_state = SM_FREQ_RESTART;
         break;
 
-    case SM_FREQ_RESTART:
+    case SM_FREQ_RESTART: // 写 MODE1=oldmode|RESTART（恢复 PWM 输出）
         if (i2c_write_byte(g_fd, PCA9685_MODE1, g_sm_oldmode | PCA9685_MODE1_RESTART) < 0) {
             g_sm_state = SM_ERROR; return;
         }
         g_sm_state = SM_READY;
         break;
 
-    case SM_READY:
-    case SM_ERROR:
-    case SM_UNINIT:
+    // --- 终态 ---
+    case SM_READY:        // 初始化完成，舵机可控
+    case SM_ERROR:        // 初始化失败
+    case SM_UNINIT:       // 尚未启动
     default:
         break;
     }

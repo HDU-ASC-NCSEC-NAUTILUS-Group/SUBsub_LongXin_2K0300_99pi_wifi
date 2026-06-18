@@ -4,25 +4,25 @@
 #include "zf_common_typedef.h"
 #include <time.h>
 
-#define PCA9685_ADDR_DEFAULT     0x40
+#define PCA9685_ADDR_DEFAULT        0x40
 
-#define PCA9685_MODE1            0x00
-#define PCA9685_MODE2            0x01
-#define PCA9685_LED0_ON_L        0x06
-#define PCA9685_ALL_LED_ON_L     0xFA
-#define PCA9685_PRE_SCALE        0xFE
+#define PCA9685_MODE1               0x00
+#define PCA9685_MODE2               0x01
+#define PCA9685_LED0_ON_L           0x06
+#define PCA9685_ALL_LED_ON_L        0xFA
+#define PCA9685_PRE_SCALE           0xFE
 
-#define PCA9685_MODE1_SLEEP      0x10
-#define PCA9685_MODE1_AI         0x20
-#define PCA9685_MODE1_RESTART    0x80
-#define PCA9685_MODE2_OUTDRV     0x04
+#define PCA9685_MODE1_SLEEP         0x10
+#define PCA9685_MODE1_AI            0x20
+#define PCA9685_MODE1_RESTART       0x80
+#define PCA9685_MODE2_OUTDRV        0x04
 
-#define PCA9685_OSC_CLOCK        25000000
-#define PCA9685_PWM_RESOLUTION   4096
+#define PCA9685_OSC_CLOCK           25000000
+#define PCA9685_PWM_RESOLUTION      4096
 
-#define SERVO_FREQ               50
-#define SERVO_ANGLE_MIN          0
-#define SERVO_ANGLE_MAX          180
+#define SERVO_FREQ                  50
+#define SERVO_ANGLE_MIN             0
+#define SERVO_ANGLE_MAX             180
 
 /*
  * 舵机脉冲范围校准（不同批次 MG90S 实测偏差可达 100-200μs）
@@ -35,8 +35,8 @@
  * 常见参考: 500~2500, 600~2400, 700~2300
  * 改中间值即可，角度比例映射自动生效，90°恒为 (MIN+MAX)/2
  */
-#define SERVO_PULSE_MIN_US       300
-#define SERVO_PULSE_MAX_US       2700
+#define SERVO_PULSE_MIN_US          400
+#define SERVO_PULSE_MAX_US          2600
 
 /*
  * 同一通道连续写入保护（微秒）
