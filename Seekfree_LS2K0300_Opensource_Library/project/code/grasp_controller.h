@@ -21,7 +21,7 @@
 #define ANGLE_ZERO_GRIPPER          90.0f   // 夹爪
 #define ANGLE_ZERO_WRIST            0.0f    // 夹爪旋转
 
-#define JOINT_STEP_COUNT            40      // 固定走 STEP_COUNT 步
+#define JOINT_STEP_COUNT            45      // 固定走 STEP_COUNT 步
                                             // 所有关节同时到位
 
 #define ANGLE_EPSILON               0.5f    // 角度到位容差(度)，误差 < 0.1° 视为到位

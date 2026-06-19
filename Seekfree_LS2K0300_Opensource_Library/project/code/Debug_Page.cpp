@@ -21,6 +21,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
             ips200_show_string(10 ,48 , "UVC-QR");
             ips200_show_string(10 ,64 , "UVC-TRACK");
             ips200_show_string(10 ,80 , "Servo(PCA9685)");
+            ips200_show_string(10 ,96 , "ARM-Grasp");
 		
 			break;
 	}
@@ -64,6 +65,14 @@ void Debug_Servo_UI(void)
     ips200_show_string(10 ,96 , "Servo_4:##");
     ips200_show_string(10 ,112, "Reset(OFF)");
 }
+
+// [三级界面]机械臂抓取调试界面
+void ARM_Grasp_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-ARM-Grasp");
+    ips200_show_string(0  ,16 , "==============================");
+}
+
 /**********************************************************/
 /*-----------------------------------------[E] 菜单样式 [E]*/
 /**********************************************************/
@@ -78,6 +87,7 @@ int Debug_UART1         (void);
 int Debug_UVC_QR        (void);
 int Debug_UVC_TRACK     (void);
 int Debug_Servo         (void);
+int Debug_ARM_Grasp     (void);
 
 
 // [二级界面]Debug模式界面
@@ -102,13 +112,13 @@ int Debug_Page_Menu(void)
         {
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 4;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 5;
         }
         else if (Key_Check(KEY_NAME_DOWN,KEY_SINGLE))
         {
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 4)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 5)Debug_Page_flag = 1;
         }
         else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
         {
@@ -161,6 +171,16 @@ int Debug_Page_Menu(void)
             ips200_clear();
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,80 , ">");
+        }
+        else if (Debug_Page_flag_temp == 5)
+        {
+            ips200_clear();
+            Debug_ARM_Grasp();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,96 , ">");
         }
         
 
@@ -350,11 +370,11 @@ int Debug_UVC_QR(void)
     }
 }
 
-//   #   #  #   #   ####         #####  ####    ###    ####  #   #
-//   #   #  #   #  #               #    #   #  #   #  #      #  #
-//   #   #  #   #  #       ###     #    ####   #####  #      ###
-//   #   #   # #   #               #    #  #   #   #  #      #  #
-//    ###     #     ####           #    #   #  #   #   ####  #   #
+// #   #  #   #   ####         #####  ####    ###    ####  #   #
+// #   #  #   #  #               #    #   #  #   #  #      #  #
+// #   #  #   #  #       ###     #    ####   #####  #      ###
+// #   #   # #   #               #    #  #   #   #  #      #  #
+//  ###     #     ####           #    #   #  #   #   ####  #   #
 //
 // [三级界面]物块跟踪调试
 int Debug_UVC_TRACK(void)
@@ -373,7 +393,8 @@ int Debug_UVC_TRACK(void)
             return 0;
         }
         
-        if (object_tracking()) {
+        if (object_tracking()) 
+        {
             coordinate_transformation();
         }
     }
@@ -541,6 +562,93 @@ int Debug_Servo(void)
             ips200_Printf(74 ,64 , "%d    ", Angle[1]);
             ips200_Printf(74 ,80 , "%d    ", Angle[2]);
             ips200_Printf(74 ,96 , "%d    ", Angle[3]);
+        }
+    }
+}
+
+//  ###   ####   #   #          ###   ####    ###   #####  #####  
+// #   #  #   #  ## ##         #      #   #  #   #  #      #   #  
+// #####  ####   # # #   ###   #  ##  ####   #####  #####  #####  
+// #   #  #  #   #   #         #   #  #  #   #   #      #  #      
+// #   #  #   #  #   #          ###   #   #  #   #  #####  #      
+//
+// [三级界面]机械臂抓取调试
+int Debug_ARM_Grasp(void)
+{
+    ARM_Grasp_UI();
+
+    uint8_t Track_Success = 0;
+    uint8_t Track_Count = 0;
+    float x_sum = 0.0f, y_sum = 0.0f;
+
+    // 机械臂工作状态标志位
+    // 0 停止
+    // 1 接收视觉返回
+    // 2 开始舵机动作
+    uint8_t arm_work_state = 0;
+
+    while(1)
+    {
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+        if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
+        {
+            arm_work_state = 1;
+        }
+        else if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
+        {
+            // 返回上一级界面
+            arm_work_state = 0;
+            x_sum       = 0.0f;
+            y_sum       = 0.0f;
+            Track_Count = 0;
+
+            servo_move_sync(0);
+            Stop_Servo_All();
+            return 0;
+        }
+
+        // 每次循环重置为0,识别成功后置1
+        Track_Success = 0;
+
+        // 视觉识别
+        if (object_tracking())
+        {
+            coordinate_transformation();
+            Track_Success = 1;
+        }
+
+        // 机械臂抓取解析
+        if (Track_Success == 1 && arm_work_state == 1)
+        {
+            x_sum += real_x;
+            y_sum += real_y;
+            Track_Count += 1;
+            printf("ARM:T%d\n",Track_Count);
+
+            if (Track_Count == 5)
+            {
+                x_result = x_sum / 5.0f;
+                y_result = y_sum / 5.0f;
+                x_sum       = 0.0f;
+                y_sum       = 0.0f;
+                if (grasp_compute_angles())
+                {
+                    arm_work_state = 2;
+                    printf("ARM:MOVE-START!\n");
+                }
+                Track_Count = 0;
+            }
+        }
+
+        // 舵机运动中
+        if (arm_work_state == 2)
+        {
+            if (servo_move_sync(1))
+            {
+                arm_work_state = 0;
+                printf("ARM:MOVE-DONE!\n");
+            }
         }
     }
 }
