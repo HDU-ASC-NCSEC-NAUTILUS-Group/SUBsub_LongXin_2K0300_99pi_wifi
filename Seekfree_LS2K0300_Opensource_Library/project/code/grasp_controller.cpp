@@ -1,5 +1,6 @@
 #include "zf_common_headfile.h"
 #include <math.h>       // sqrt, atan2, acos, M_PI
+#include <time.h>       // clock_gettime
 
 // 最终用于抓取解析的坐标值
 float x_result = 0.0f, y_result = 0.0f;
@@ -293,6 +294,14 @@ static uint64_t rst_deadline_us = 0;         // 延时到期时刻
 
 #define RST_DELAY_US    300000               // 关节间等待 300ms
 
+// 获取当前单调时间（微秒）
+static uint64_t us_now(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+
 int servo_reset_init(int cmd)
 {
     uint64_t now;
@@ -331,14 +340,14 @@ int servo_reset_init(int cmd)
     case RST_SEND: {
         int ch = joint_channel[reset_order[rst_idx]];
         if (Servo_Set_Angle(ch, reset_angle[rst_idx])) {
-            rst_deadline_us = sm_now_us() + RST_DELAY_US;
+            rst_deadline_us = us_now() + RST_DELAY_US;
             rst_state = RST_WAIT;
         }
         break;
     }
 
     case RST_WAIT:
-        now = sm_now_us();
+        now = us_now();
         if (now >= rst_deadline_us) {
             rst_idx++;
             rst_state = RST_SEND;
