@@ -1,18 +1,25 @@
-/********************************************************************************************************************
- * 全功能非阻塞式按键
- * 原代码来自江协科技
- ********************************************************************************************************************/
+/*******************************************************************************
+* 全功能非阻塞式按键
+* 原代码来自江协科技
+*******************************************************************************/
 #ifndef __KEY_H__
 #define __KEY_H__
 
 
 // 按键宏定义
-#define KEY_DEFINE_UP       "/dev/zf_driver_gpio_key_3"    //P16;S3
-#define KEY_DEFINE_DOWN     "/dev/zf_driver_gpio_key_2"    //P15;S4
-#define KEY_DEFINE_CONFIRM  "/dev/zf_driver_gpio_key_1"    //P14;S5
-#define KEY_DEFINE_BACK     "/dev/zf_driver_gpio_key_0"    //P13;S6
+// 一级命名
+#define KEY_DEFINE_1            "/dev/zf_driver_gpio_key_3"    //P16;S3
+#define KEY_DEFINE_2            "/dev/zf_driver_gpio_key_2"    //P15;S4
+#define KEY_DEFINE_3            "/dev/zf_driver_gpio_key_1"    //P14;S5
+#define KEY_DEFINE_4            "/dev/zf_driver_gpio_key_0"    //P13;S6
 
-//用宏定义替换1/0，便于理解Key_GetState（）
+// 二级映射
+#define KEY_DEFINE_UP           KEY_DEFINE_1
+#define KEY_DEFINE_DOWN         KEY_DEFINE_2
+#define KEY_DEFINE_CONFIRM      KEY_DEFINE_3
+#define KEY_DEFINE_BACK         KEY_DEFINE_4
+
+//用宏定义替换1/0，便于理解Key_GetState()函数
 #define KEY_PRESSED 			1
 #define	KEY_UNPRESSED			0
 
@@ -30,10 +37,16 @@
 #define KEY_COUNT				4
 
 //用宏定义替换按键索引号
-#define KEY_NAME_UP				0	
-#define KEY_NAME_DOWN			1	
-#define KEY_NAME_CONFIRM		2	
-#define KEY_NAME_BACK			3	
+// 一级定义
+#define KEY_1				    0	
+#define KEY_2			        1	
+#define KEY_3		            2	
+#define KEY_4			        3	
+
+#define KEY_NAME_UP				KEY_1
+#define KEY_NAME_DOWN			KEY_2
+#define KEY_NAME_CONFIRM		KEY_3
+#define KEY_NAME_BACK			KEY_4
 
 //用宏定义替换按键标志位的位掩码，使程序的意义更清晰
 #define KEY_HOLD				0x01

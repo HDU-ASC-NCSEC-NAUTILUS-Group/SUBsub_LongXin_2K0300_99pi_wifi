@@ -70,14 +70,14 @@ void cleanup()
     pit_timer_10ms->stop();
     pit_timer_200ms->stop();
 
+    printf("程序退出,执行清理操作\n");
+    
     Stop_Servo_All();
-
-    printf("程序退出，执行清理操作\n");
 }
 // 宣告程序退出函数
 void sigint_handler(int signum) 
 {
-    printf("收到Ctrl+C，程序即将退出\n");
+    printf("收到Ctrl+C,程序即将退出\n");
     exit(0);
 }
 /*******************************************************************************************************************/
@@ -102,6 +102,7 @@ int main(int, char**)
     // 创建200ms定时器
     pit_timer_200ms = new timer_fd(200, pit_callback_200ms);
     pit_timer_200ms->start();  
+
 
     while(1)
     {

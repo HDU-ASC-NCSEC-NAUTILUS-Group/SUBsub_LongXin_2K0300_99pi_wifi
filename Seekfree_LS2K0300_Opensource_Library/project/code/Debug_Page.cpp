@@ -1,12 +1,12 @@
-/********************************************************************************************************************
+/*******************************************************************************
 * Debug模式菜单文件
-********************************************************************************************************************/
+*******************************************************************************/
 #include "zf_common_headfile.h"
 
 
-/*******************************************************************************************************************/
-/*[S] 菜单样式 [S]--------------------------------------------------------------------------------------------------*/
-/*******************************************************************************************************************/
+/**********************************************************/
+/*[S] 菜单样式 [S]-----------------------------------------*/
+/**********************************************************/
 
 // [二级界面]Debug模式界面
 void Debug_Page_Menu_UI(uint8_t Page)
@@ -21,6 +21,7 @@ void Debug_Page_Menu_UI(uint8_t Page)
             ips200_show_string(10 ,48 , "UVC-QR");
             ips200_show_string(10 ,64 , "UVC-TRACK");
             ips200_show_string(10 ,80 , "Servo(PCA9685)");
+            ips200_show_string(10 ,96 , "ARM-Grasp");
 		
 			break;
 	}
@@ -31,14 +32,15 @@ void Debug_UART1_UI(void)
 {
     ips200_show_string(8  ,0  , "[DEBUG]-UART1");
     ips200_show_string(0  ,16 , "==============================");
-    ips200_show_string(0  ,32 , "TX:");
+    ips200_show_string(0  ,32 , "  [Press CONFIRM to send TX]");
+    ips200_show_string(0  ,48 , "TX:");
     // 占位(必要时上一行溢出的字符会切割到这一行显示)
-    ips200_show_string(0  ,64 , "RX:");
+    ips200_show_string(0  ,80 , "RX:");
     // 占位(必要时上一行溢出的字符会切割到这一行显示)
     // 占位
-    ips200_show_string(0  ,112, "CH1:"); // 切分到的第一个字符
-    ips200_show_string(0  ,128, "CH2:"); // 切分到的第二个字符(如果有)
-    ips200_show_string(0  ,144, "CH3:"); // 切分到的第三个字符(如果有)
+    ips200_show_string(0  ,128, "CH1:"); // 切分到的第一个字符
+    ips200_show_string(0  ,144, "CH2:"); // 切分到的第二个字符(如果有)
+    ips200_show_string(0  ,160, "CH3:"); // 切分到的第三个字符(如果有)
 }
 
 // [三级界面]UVC摄像头的二维码识别调试界面
@@ -63,20 +65,29 @@ void Debug_Servo_UI(void)
     ips200_show_string(10 ,96 , "Servo_4:##");
     ips200_show_string(10 ,112, "Reset(OFF)");
 }
-/*******************************************************************************************************************/
-/*--------------------------------------------------------------------------------------------------[E] 菜单样式 [E]*/
-/*******************************************************************************************************************/
+
+// [三级界面]机械臂抓取调试界面
+void ARM_Grasp_UI(void)
+{
+    ips200_show_string(8  ,0  , "[DEBUG]-ARM-Grasp");
+    ips200_show_string(0  ,16 , "==============================");
+}
+
+/**********************************************************/
+/*-----------------------------------------[E] 菜单样式 [E]*/
+/**********************************************************/
 
 
-/*******************************************************************************************************************/
-/*[S] 界面逻辑 [S]--------------------------------------------------------------------------------------------------*/
-/*******************************************************************************************************************/
+/**********************************************************/
+/*[S] 界面逻辑 [S]-----------------------------------------*/
+/**********************************************************/
 
 // 相关函数提前声明
 int Debug_UART1         (void);
 int Debug_UVC_QR        (void);
 int Debug_UVC_TRACK     (void);
 int Debug_Servo         (void);
+int Debug_ARM_Grasp     (void);
 
 
 // [二级界面]Debug模式界面
@@ -101,13 +112,13 @@ int Debug_Page_Menu(void)
         {
             key_pressed = 1;
             Debug_Page_flag --;
-            if (Debug_Page_flag < 1)Debug_Page_flag = 4;
+            if (Debug_Page_flag < 1)Debug_Page_flag = 5;
         }
         else if (Key_Check(KEY_NAME_DOWN,KEY_SINGLE))
         {
             key_pressed = 1;
             Debug_Page_flag ++;
-            if (Debug_Page_flag > 4)Debug_Page_flag = 1;
+            if (Debug_Page_flag > 5)Debug_Page_flag = 1;
         }
         else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
         {
@@ -160,6 +171,16 @@ int Debug_Page_Menu(void)
             ips200_clear();
             Debug_Page_Menu_UI(1);
             ips200_show_string(0  ,80 , ">");
+        }
+        else if (Debug_Page_flag_temp == 5)
+        {
+            ips200_clear();
+            Debug_ARM_Grasp();
+            
+            // 从子界面返回后
+            ips200_clear();
+            Debug_Page_Menu_UI(1);
+            ips200_show_string(0  ,96 , ">");
         }
         
 
@@ -224,6 +245,10 @@ int Debug_UART1(void)
 
     while(1)
     {
+        // 消费掉按键判定
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+
         if (Key_Check(KEY_NAME_CONFIRM, KEY_SINGLE))
         {
             char send_buf[64];
@@ -233,7 +258,7 @@ int Debug_UART1(void)
                      words[(window_start + 2) % num_words]);
             uart1_send((uint8*)send_buf, len);
 
-            ips200_Printf(30, 32, "[%s,%s,%s]\\n  ",
+            ips200_Printf(30, 48, "[%s,%s,%s]\\n  ",
                      words[window_start % num_words],
                      words[(window_start + 1) % num_words],
                      words[(window_start + 2) % num_words]);
@@ -273,7 +298,7 @@ int Debug_UART1(void)
                         }
                     }
                     rx_display[j] = '\0';
-                    ips200_Printf(30, 64, "%-20s", rx_display);
+                    ips200_Printf(30, 80, "%-20s", rx_display);
                 }
 
                 char *end = strchr((char*)rx_ring, '\n');
@@ -295,9 +320,9 @@ int Debug_UART1(void)
                         char *ch2 = strtok(NULL, ",");
                         char *ch3 = strtok(NULL, ",");
 
-                        ips200_Printf(40, 112, "%-10s", ch1 ? ch1 : "");
-                        ips200_Printf(40, 128, "%-10s", ch2 ? ch2 : "");
-                        ips200_Printf(40, 144, "%-10s", ch3 ? ch3 : "");
+                        ips200_Printf(40, 128, "%-10s", ch1 ? ch1 : "");
+                        ips200_Printf(40, 144, "%-10s", ch2 ? ch2 : "");
+                        ips200_Printf(40, 160, "%-10s", ch3 ? ch3 : "");
                     }
 
                     int remain = rx_pos - (end + 1 - (char*)rx_ring);
@@ -331,6 +356,11 @@ int Debug_UVC_QR(void)
 
     while(1)
     {
+        // 消费掉按键判定
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+        Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE);
+
         if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
         {
             return 0;
@@ -340,11 +370,11 @@ int Debug_UVC_QR(void)
     }
 }
 
-//   #   #  #   #   ####         #####  ####    ###    ####  #   #
-//   #   #  #   #  #               #    #   #  #   #  #      #  #
-//   #   #  #   #  #       ###     #    ####   #####  #      ###
-//   #   #   # #   #               #    #  #   #   #  #      #  #
-//    ###     #     ####           #    #   #  #   #   ####  #   #
+// #   #  #   #   ####         #####  ####    ###    ####  #   #
+// #   #  #   #  #               #    #   #  #   #  #      #  #
+// #   #  #   #  #       ###     #    ####   #####  #      ###
+// #   #   # #   #               #    #  #   #   #  #      #  #
+//  ###     #     ####           #    #   #  #   #   ####  #   #
 //
 // [三级界面]物块跟踪调试
 int Debug_UVC_TRACK(void)
@@ -353,12 +383,20 @@ int Debug_UVC_TRACK(void)
 
     while(1)
     {
+        // 消费掉按键判定
+        Key_Check(KEY_NAME_UP,KEY_SINGLE);
+        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
+        Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE);
+
         if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
         {
             return 0;
         }
         
-        object_tracking();
+        if (object_tracking() == 1)
+        {
+            coordinate_transformation();
+        }
     }
 }
 
@@ -380,7 +418,7 @@ int Debug_Servo(void)
     ips200_show_string(0 ,48 , ">");
 
     // 存储设置的舵机角度,实际考虑更改数值时才做实际设置PWM
-    uint8_t Angle[4] = {90 ,90 ,90 ,90};
+    uint8_t Angle[4] = {90 ,90 ,135 ,145};
 
     // 停止所有的舵机控制
     Stop_Servo_All();
@@ -454,7 +492,7 @@ int Debug_Servo(void)
                 {
                     // 中间计算变量temp
                     int16_t temp = Angle[Debug_Servo_flag_temp - 1];
-                    temp += 3;
+                    temp += 5;
                     // 边界处理
                     if (temp > 180)
                     {
@@ -466,7 +504,7 @@ int Debug_Servo(void)
                     }
                     Angle[Debug_Servo_flag_temp - 1] = temp;
 
-                    Set_Servo(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
+                    Servo_Set_Angle(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
                 }                     
             }
             else if (Key_Check(KEY_NAME_DOWN,KEY_SINGLE)) 
@@ -477,7 +515,7 @@ int Debug_Servo(void)
                 {
                     // 中间计算变量temp
                     int16_t temp = Angle[Debug_Servo_flag_temp - 1];
-                    temp -= 3;
+                    temp -= 5;
                     // 边界处理
                     if (temp > 180)
                     {
@@ -489,7 +527,7 @@ int Debug_Servo(void)
                     }
                     Angle[Debug_Servo_flag_temp - 1] = temp;
 
-                    Set_Servo(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
+                    Servo_Set_Angle(Debug_Servo_flag_temp - 1, Angle[Debug_Servo_flag_temp - 1]); 
                 }                            
             }
             else if ((Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE)) || (Key_Check(KEY_NAME_BACK,KEY_SINGLE)))
@@ -527,6 +565,142 @@ int Debug_Servo(void)
         }
     }
 }
-/*******************************************************************************************************************/
-/*--------------------------------------------------------------------------------------------------[E] 界面逻辑 [E]*/
-/*******************************************************************************************************************/
+
+//  ###   ####   #   #          ###   ####    ###   #####  #####  
+// #   #  #   #  ## ##         #      #   #  #   #  #      #   #  
+// #####  ####   # # #   ###   #  ##  ####   #####  #####  #####  
+// #   #  #  #   #   #         #   #  #  #   #   #      #  #      
+// #   #  #   #  #   #          ###   #   #  #   #  #####  #      
+//
+// [三级界面]机械臂抓取调试
+int Debug_ARM_Grasp(void)
+{
+    ARM_Grasp_UI();
+
+    uint8_t Track_Success = 0;
+    uint8_t Track_Count = 0;
+    float x_sum = 0.0f, y_sum = 0.0f;
+
+    // 机械臂工作状态标志位
+    // 0 停止
+    // 1 接收视觉返回
+    // 2 开始舵机动作
+    // 3 复位中
+    // 4 夹爪闭合
+    // 5 机械臂抬起
+    uint8_t arm_work_state = 3;
+
+    servo_reset_init(1);   // 启动复位，穿透执行第一个关节
+
+    while(1)
+    {
+        if (Key_Check(KEY_NAME_UP,KEY_SINGLE) || Key_Check(KEY_NAME_DOWN,KEY_SINGLE))
+        {
+            // 复位中不重复触发
+            if (arm_work_state != 3) {
+                arm_work_state = 3;
+                servo_reset_init(1);
+            }
+        }
+        else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE) && arm_work_state != 3)
+        {
+            // 开始接收视觉返回（复位中忽略）
+            arm_work_state = 1;
+        }
+        else if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
+        {
+            // 返回上一级界面
+            arm_work_state = 0;
+            x_sum       = 0.0f;
+            y_sum       = 0.0f;
+            Track_Count = 0;
+
+            servo_move_sync(0);
+            servo_reset_init(0);
+            Stop_Servo_All();
+            return 0;
+        }
+
+        // 复位中：逐帧推进，忽略其他逻辑
+        if (arm_work_state == 3)
+        {
+            if (servo_reset_init(2))
+            {
+                arm_work_state = 0;
+                printf("复位完成\n");
+            }
+            continue;
+        }
+
+        // 每次循环重置为0,识别成功后置1
+        Track_Success = 0;
+
+        // 视觉识别
+        if (object_tracking() == 1)
+        {
+            coordinate_transformation();
+            Track_Success = 1;
+        }
+
+        // 机械臂抓取解析
+        if (Track_Success == 1 && arm_work_state == 1)
+        {
+            x_sum += real_x;
+            y_sum += real_y;
+            Track_Count += 1;
+            printf("ARM:TRACK-%d\n",Track_Count);
+
+            if (Track_Count == 5)
+            {
+                x_result = x_sum / 5.0f + 0.0f;
+                y_result = y_sum / 5.0f + 0.0f;
+                x_sum    = 0.0f;
+                y_sum    = 0.0f;
+                if (grasp_compute_angles())
+                {
+                    arm_work_state = 2;
+                    printf("B:%.1f ,1:%.1f ,2:%.1f\n", target_angle[0], target_angle[1], target_angle[2]);
+                    printf("ARM:MOVE-START!\n");
+                }
+                Track_Count = 0;
+            }
+        }
+
+        // 舵机运动中
+        if (arm_work_state == 2)
+        {
+            if (servo_move_sync(1))
+            {
+                arm_work_state = 4;                         // 大臂到位，进入夹爪闭合
+                printf("ARM:MOVE-DONE!\n");
+            }
+        }
+
+        // 夹爪闭合（一步到位）
+        if (arm_work_state == 4)
+        {
+            Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 60.0f);
+            current_angle[NAME_JOINT_GRIPPER] = 60.0f;
+            // 设定抬起目标角度（夹爪保持在60°不张开）
+            target_angle[NAME_JOINT_GRIPPER] = 60.0f;
+            target_angle[NAME_JOINT_BASE]    = 90.0f;
+            target_angle[NAME_JOINT_ARM_1]   = 90.0f;
+            target_angle[NAME_JOINT_ARM_2]   = 90.0f;
+            arm_work_state = 5;
+            printf("ARM:GRIP-CLOSE!\n");
+        }
+
+        // 机械臂抬起
+        if (arm_work_state == 5)
+        {
+            if (servo_move_sync(1))
+            {
+                arm_work_state = 0;
+                printf("ARM:LIFT-DONE!\n");
+            }
+        }
+    }
+}
+/**********************************************************/
+/*-----------------------------------------[E] 界面逻辑 [E]*/
+/**********************************************************/

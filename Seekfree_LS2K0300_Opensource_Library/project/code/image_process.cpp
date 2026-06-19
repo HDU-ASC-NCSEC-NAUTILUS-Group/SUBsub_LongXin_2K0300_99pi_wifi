@@ -1,3 +1,6 @@
+/*******************************************************************************
+* UVC摄像头设备进程文件
+*******************************************************************************/
 #include "zf_common_headfile.h"
 #include "opencv2/opencv.hpp"
 #include <opencv2/imgproc.hpp>
@@ -6,8 +9,13 @@
 #include <opencv2/highgui.hpp>
 #include <string>
 #include <vector>
+#include <time.h>       // clock_gettime
 
 #define BEEP    "/dev/zf_driver_gpio_beep"
+
+/**********************************************************/
+/*[S] 图像本体定义 [S]--------------------------------------*/
+/**********************************************************/
 
 #define SCREEN_WIDTH  240
 #define SCREEN_HEIGHT 320
@@ -17,32 +25,33 @@
 #define UVC_HALF_RESOLUTION
 
 #ifdef UVC_HALF_RESOLUTION
-#define PROC_WIDTH   320
-#define PROC_HEIGHT  240
+    #define PROC_WIDTH   (UVC_WIDTH / 2)
+    #define PROC_HEIGHT  (UVC_HEIGHT / 2)
 #else
-#define PROC_WIDTH   UVC_WIDTH
-#define PROC_HEIGHT  UVC_HEIGHT
+    #define PROC_WIDTH   UVC_WIDTH
+    #define PROC_HEIGHT  UVC_HEIGHT
 #endif
 
 //ips图像显示外部变量引用
-extern uint16 ips200_pencolor;
 extern cv::Mat frame_rgay;
+
+/**********************************************************/
+/*--------------------------------------[E] 图像本体定义 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 二维码处理 [S]----------------------------------------*/
+/**********************************************************/
 
 //二维码相关数据初始化
 cv::QRCodeDetector qrDecoder;
 
-// 文字叠加区域（图像底部）
-const int text_x = 0;
-const int text_y = SCREEN_HEIGHT - 16;
-
-float real_x, real_y;
-
 // 二维码解码处理
 int QR_process(void)
 {
-    static int frame_count = 0;
-
-    if (wait_image_refresh() < 0) {
+    int result = wait_image_refresh();       // 1=有帧, 0=暂无, <0=错误
+    if (result <= 0) {
         return 0;
     }
 
@@ -50,10 +59,15 @@ int QR_process(void)
         return 0;
     }
 
-    frame_count++;
-    if (frame_count % 6 != 0) {
+    // 跳帧：每隔 ~500ms 处理一次二维码，节省算力
+    static int64_t last_qr_ms = 0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    int64_t now_ms = (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    if (now_ms - last_qr_ms < 500) {
         return 0;
     }
+    last_qr_ms = now_ms;
 
     cv::Mat frame_gray_proc;
 #ifdef UVC_HALF_RESOLUTION
@@ -78,32 +92,46 @@ int QR_process(void)
     if (!qr_data.empty()) {
         char buf[64];
         snprintf(buf, sizeof(buf), "QR: %.40s", qr_data.c_str());
-        ips200_show_string(text_x, text_y, buf);
+        ips200_show_string(0, SCREEN_HEIGHT - 16, buf);
         gpio_set_level(BEEP, 0x1);
     } else {
-        ips200_show_string(text_x, text_y, "No QR code");
+        ips200_show_string(0, SCREEN_HEIGHT - 16, "No QR code");
         gpio_set_level(BEEP, 0x0);
     }
-
+    
     return 1;
 }
+/**********************************************************/
+/*----------------------------------------[E] 二维码处理 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 物块跟踪 [S]-----------------------------------------*/
+/**********************************************************/
 
 // 红色物块检测函数：输入 BGR 图像，返回质心坐标（若未检测到则返回 (-1,-1)）
 static cv::Point2i detect_red_object(const cv::Mat &frame_bgr)
 {
+    // 预分配：Mat 内存只分配一次，后续调用复用
+    static cv::Mat hsv, mask1, mask2, mask;
+    static const cv::Scalar kRedLow1(0,   50, 50);
+    static const cv::Scalar kRedHigh1(10,  255, 255);
+    static const cv::Scalar kRedLow2(160,  50, 50);
+    static const cv::Scalar kRedHigh2(180, 255, 255);
+    static const cv::Mat    kKernel3x3 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
     // 转换为 HSV 颜色空间
-    cv::Mat hsv;
     cv::cvtColor(frame_bgr, hsv, cv::COLOR_BGR2HSV);
 
     // 红色在 HSV 中有两个区间：低区间 (0~10) 和高区间 (160~180)
-    cv::Mat mask1, mask2, mask;
-    cv::inRange(hsv, cv::Scalar(0, 50, 50), cv::Scalar(10, 255, 255), mask1);
-    cv::inRange(hsv, cv::Scalar(160, 50, 50), cv::Scalar(180, 255, 255), mask2);
+    cv::inRange(hsv, kRedLow1,  kRedHigh1, mask1);
+    cv::inRange(hsv, kRedLow2,  kRedHigh2, mask2);
     mask = mask1 | mask2;
 
-    // 可选：形态学操作，去除噪声
-    cv::erode(mask, mask, cv::Mat(), cv::Point(-1, -1), 1);
-    cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), 2);
+    // 形态学操作，去除噪声
+    cv::erode(mask, mask, kKernel3x3);
+    cv::dilate(mask, mask, kKernel3x3);
 
     // 寻找轮廓
     std::vector<std::vector<cv::Point>> contours;
@@ -113,14 +141,19 @@ static cv::Point2i detect_red_object(const cv::Mat &frame_bgr)
         return cv::Point2i(-1, -1);  // 未检测到红色物体
     }
 
-    // 选择面积最大的轮廓
-    auto largest = std::max_element(contours.begin(), contours.end(),
-                                    [](const std::vector<cv::Point> &a, const std::vector<cv::Point> &b) {
-                                        return cv::contourArea(a) < cv::contourArea(b);
-                                    });
+    // 单次遍历找最大轮廓：每个轮廓只算一次面积
+    float best_area = -1.0f;
+    size_t best_idx = 0;
+    for (size_t i = 0; i < contours.size(); i++) {
+        float a = (float)cv::contourArea(contours[i]);
+        if (a > best_area) {
+            best_area = a;
+            best_idx  = i;
+        }
+    }
 
     // 计算质心（一阶矩）
-    cv::Moments m = cv::moments(*largest);
+    cv::Moments m = cv::moments(contours[best_idx]);
     if (m.m00 == 0) {
         return cv::Point2i(-1, -1);
     }
@@ -139,16 +172,20 @@ int16_t coordinate_y = 0;
 //红色物块跟踪函数
 int object_tracking(void)
 {
-    static int frame_count = 0;
-
-    if (wait_image_refresh_rgb() < 0) {
+    int result = wait_image_refresh_rgb();   // 1=有帧, 0=暂无, <0=错误
+    if (result <= 0) {
         return 0;
     }
 
-    frame_count++;
-    if (frame_count % 6 != 0) {
+    // 跳帧：每隔 ~200ms 处理一帧，其余帧丢弃（减轻 LS2K0300 处理压力）
+    static int64_t last_process_ms = 0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    int64_t now_ms = (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    if (now_ms - last_process_ms < 200) {
         return 0;
     }
+    last_process_ms = now_ms;
 
     cv::Mat frame_proc;
 #ifdef UVC_HALF_RESOLUTION
@@ -158,6 +195,13 @@ int object_tracking(void)
 #endif
 
     cv::Point2i red_center = detect_red_object(frame_proc);
+
+#ifdef UVC_HALF_RESOLUTION
+    if (red_center.x != -1 && red_center.y != -1) {
+        red_center.x *= 2;
+        red_center.y *= 2;
+    }
+#endif
 
     cv::Mat frame_rotated;
     cv::rotate(frame_proc, frame_rotated, cv::ROTATE_90_CLOCKWISE);
@@ -172,30 +216,44 @@ int object_tracking(void)
 
     char display_buf[64];
     if (red_center.x != -1 && red_center.y != -1) {
-        snprintf(display_buf, sizeof(display_buf), "Red: (%3d,%3d)", red_center.x, red_center.y);
+        snprintf(display_buf, sizeof(display_buf), "Red:(%3d,%3d)", red_center.x, red_center.y);
     } else {
         snprintf(display_buf, sizeof(display_buf), "No red object");
     }
-    ips200_show_string(text_x, text_y, display_buf);
+    ips200_show_string(0, SCREEN_HEIGHT - 16, display_buf);
 
     coordinate_x = red_center.x;
     coordinate_y = red_center.y;
 
+    // -1: 已处理但未检测到红色物体, 1: 成功追踪, 0: 跳帧/无帧
+    if (red_center.x == -1 || red_center.y == -1) {
+        return -1;
+    }
     return 1;
 }
+/**********************************************************/
+/*-----------------------------------------[E] 物块跟踪 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 坐标 [S]---------------------------------------------*/
+/**********************************************************/
+
+float real_x, real_y;
 
 void coordinate_transformation(void)
 {
     // ---------- 1. 定义标定点（像素坐标 -> 物理坐标）----------
     static const cv::Point2f src_pts[3] = {
-        cv::Point2f(98, 306),   // 对应物理 (0, 28.5)
-        cv::Point2f(143, 156),   // 对应物理 (3.5, 27)
-        cv::Point2f(131, 393)    // 对应物理 (-2.5, 27.6)
+        cv::Point2f(496, 280),   // 对应物理 (0, 15)
+        cv::Point2f(430, 404),   // 对应物理 (3.5, 27)
+        cv::Point2f(216, 95)    // 对应物理 (-2.5, 27.6)
     };
     static const cv::Point2f dst_pts[3] = {
-        cv::Point2f(0, 28.5),
-        cv::Point2f(3.5f, 27.0f),
-        cv::Point2f(-2.5f, 27.6f)
+        cv::Point2f(0, 15),
+        cv::Point2f(-4.81f, 13.9f),
+        cv::Point2f(6.86f, 22.0f)
     };
 
     // 计算仿射变换矩阵（2x3），只计算一次并缓存
@@ -209,12 +267,9 @@ void coordinate_transformation(void)
     }
 
     // ---------- 2. 获取当前红色物块的像素坐标 ----------
-    // 注意：coordinate_x, coordinate_y 是在 object_tracking() 中赋值的全局变量
-    extern int16_t coordinate_x, coordinate_y;
+    // coordinate_x, coordinate_y 在文件顶部定义，object_tracking() 中赋值
     
-    // 若未检测到红色物体（坐标无效），则物理坐标也设为无效值（例如 -1000）
     if (coordinate_x == -1 || coordinate_y == -1) {
-        extern float real_x, real_y;
         real_x = -1000.0f;
         real_y = -1000.0f;
         return;
@@ -231,15 +286,17 @@ void coordinate_transformation(void)
                        affine_matrix.at<double>(1,2);
 
     // ---------- 4. 存储物理坐标到全局变量 ----------
-    extern float real_x, real_y;
     real_x = physical_point.x;
     real_y = physical_point.y;
 
     // ---------- 5. （可选）在屏幕文本区显示物理坐标 ----------
     char buf[48];
-    snprintf(buf, sizeof(buf), "Real: (%.2f, %.2f) cm", real_x, real_y);
+    snprintf(buf, sizeof(buf), "Real:(%.2f,%.2f)cm", real_x, real_y);
     ips200_show_string(0, SCREEN_HEIGHT - 32, buf);
 
     // 可选：控制台输出（便于调试）
     // printf("Pixel(%d,%d) -> Real(%.2f,%.2f) cm\n", coordinate_x, coordinate_y, real_x, real_y);
 }
+/**********************************************************/
+/*---------------------------------------------[E] 坐标 [E]*/
+/**********************************************************/
