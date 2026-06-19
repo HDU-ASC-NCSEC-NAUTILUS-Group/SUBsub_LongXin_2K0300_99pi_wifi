@@ -624,17 +624,18 @@ int Debug_ARM_Grasp(void)
             x_sum += real_x;
             y_sum += real_y;
             Track_Count += 1;
-            printf("ARM:T%d\n",Track_Count);
+            printf("ARM:TRACK-%d\n",Track_Count);
 
             if (Track_Count == 5)
             {
                 x_result = x_sum / 5.0f;
                 y_result = y_sum / 5.0f;
-                x_sum       = 0.0f;
-                y_sum       = 0.0f;
+                x_sum    = 0.0f;
+                y_sum    = 0.0f;
                 if (grasp_compute_angles())
                 {
                     arm_work_state = 2;
+                    printf("B:%.1f ,1:%.1f ,2:%.1f\n", target_angle[0], target_angle[1], target_angle[2]);
                     printf("ARM:MOVE-START!\n");
                 }
                 Track_Count = 0;

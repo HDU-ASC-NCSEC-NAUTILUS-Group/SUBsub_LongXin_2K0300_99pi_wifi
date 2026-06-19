@@ -9,6 +9,7 @@
 #include <opencv2/highgui.hpp>
 #include <string>
 #include <vector>
+#include <time.h>       // clock_gettime
 
 #define BEEP    "/dev/zf_driver_gpio_beep"
 
@@ -49,9 +50,8 @@ cv::QRCodeDetector qrDecoder;
 // 二维码解码处理
 int QR_process(void)
 {
-    static int frame_count = 0;
-
-    if (wait_image_refresh() < 0) {
+    int result = wait_image_refresh();       // 1=有帧, 0=暂无, <0=错误
+    if (result <= 0) {
         return 0;
     }
 
@@ -59,10 +59,15 @@ int QR_process(void)
         return 0;
     }
 
-    frame_count++;
-    if (frame_count % 6 != 0) {
+    // 跳帧：每隔 ~500ms 处理一次二维码，节省算力
+    static int64_t last_qr_ms = 0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    int64_t now_ms = (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    if (now_ms - last_qr_ms < 500) {
         return 0;
     }
+    last_qr_ms = now_ms;
 
     cv::Mat frame_gray_proc;
 #ifdef UVC_HALF_RESOLUTION
@@ -156,16 +161,20 @@ int16_t coordinate_y = 0;
 //红色物块跟踪函数
 int object_tracking(void)
 {
-    static int frame_count = 0;
-
-    if (wait_image_refresh_rgb() < 0) {
+    int result = wait_image_refresh_rgb();   // 1=有帧, 0=暂无, <0=错误
+    if (result <= 0) {
         return 0;
     }
 
-    frame_count++;
-    if (frame_count % 6 != 0) {
+    // 跳帧：每隔 ~200ms 处理一帧，其余帧丢弃（减轻 LS2K0300 处理压力）
+    static int64_t last_process_ms = 0;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    int64_t now_ms = (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    if (now_ms - last_process_ms < 200) {
         return 0;
     }
+    last_process_ms = now_ms;
 
     cv::Mat frame_proc;
 #ifdef UVC_HALF_RESOLUTION

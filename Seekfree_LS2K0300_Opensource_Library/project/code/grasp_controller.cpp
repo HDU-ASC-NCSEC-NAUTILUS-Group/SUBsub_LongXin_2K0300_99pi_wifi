@@ -7,11 +7,11 @@ float x_result = 0.0f, y_result = 0.0f;
 // 初始化为复位角度
 float target_angle[JOINT_COUNT]
 //  = {
-//     [JOINT_BASE]          = ANGLE_ZERO_BASE,
-//     [JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
-//     [JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
-//     [JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
-//     [JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
+//     [NAME_JOINT_BASE]          = ANGLE_ZERO_BASE,
+//     [NAME_JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
+//     [NAME_JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
+//     [NAME_JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
+//     [NAME_JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
 // }
 ;
 float current_angle[JOINT_COUNT];  // 当前角度(实际上是无法直接读取到实际角度的，只是方便状态控制)
@@ -89,9 +89,9 @@ int grasp_compute_angles(void)
     if (arm2_tar > 175.0f) arm2_tar = 175.0f;
 
     // ------ 3. 写入全局目标角度 ------
-    target_angle[JOINT_BASE]  = base_tar;
-    target_angle[JOINT_ARM_1] = arm1_tar;
-    target_angle[JOINT_ARM_2] = arm2_tar;
+    target_angle[NAME_JOINT_BASE]  = base_tar;
+    target_angle[NAME_JOINT_ARM_1] = arm1_tar;
+    target_angle[NAME_JOINT_ARM_2] = arm2_tar;
 
     return 1;
 }
@@ -116,7 +116,7 @@ enum {
     MOTION_DONE   = 2,                      // 已完成
 };
 
-static int motion_state = MOTION_IDLE;  
+static int motion_state = MOTION_IDLE;
 static float cached_target[JOINT_COUNT] = {
     INVALID_ANGLE,
     INVALID_ANGLE,
@@ -126,6 +126,20 @@ static float cached_target[JOINT_COUNT] = {
 };                                           // 快照，屏蔽外部改动
 static float step_size[JOINT_COUNT];        // 每关节每步增量
 static int step_remain;                     // 剩余步数，倒计数
+
+/*
+ * 逻辑关节 → PCA9685 物理通道映射
+ *
+ * 更改接线时只需修改 grasp_controller.h 中 DEFINE_JOINT_* 宏的值，
+ * 所有 Servo_Set_Angle 调用自动跟随
+ */
+static const int joint_channel[JOINT_COUNT] = {
+    DEFINE_JOINT_BASE,
+    DEFINE_JOINT_ARM_1,
+    DEFINE_JOINT_ARM_2,
+    DEFINE_JOINT_GRIPPER,
+    DEFINE_JOINT_GRIPPER_WRIST
+};
 
 /**
  * servo_move_sync - 舵机运动状态机
@@ -206,7 +220,7 @@ int servo_move_sync(int enable)
                 step_target = cached_target[j];   // 最后一步直接拉到终值
             }
 
-            if (Servo_Set_Angle(j, step_target)) {
+            if (Servo_Set_Angle(joint_channel[j], step_target)) {
                 current_angle[j] = step_target;   // 指令已下发，更新跟踪值
                 any_sent = 1;
             }

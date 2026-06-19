@@ -5,36 +5,53 @@
 #define __GRASP_CONTROLLER_H__
 
 
-// 机械臂关节索引   
-#define JOINT_COUNT                 5       // 舵机总数(兴许用不上这个宏定义)
+// 机械臂关节总数
+#define JOINT_COUNT                     5
 
-#define JOINT_BASE                  0       // 底座
-#define JOINT_ARM_1                 1       // 一大臂
-#define JOINT_ARM_2                 2       // 二大臂
-#define JOINT_GRIPPER               3       // 夹爪
-#define JOINT_GRIPPER_WRIST         4       // 夹爪旋转
+/*
+ * 逻辑关节索引（固定值，用于 target_angle[] 等数组下标）
+ *
+ * 始终按此顺序: BASE=0, ARM_1=1, ARM_2=2, GRIPPER=3, WRIST=4
+ */
+#define NAME_JOINT_BASE                 0       // 底座 = 数组下标逻辑关节 0
+#define NAME_JOINT_ARM_1                1       // 一大臂 = 数组下标逻辑关节 1
+#define NAME_JOINT_ARM_2                2       // 二大臂 = 数组下标逻辑关节 2
+#define NAME_JOINT_GRIPPER              3       // 夹爪 = 数组下标逻辑关节 3
+#define NAME_JOINT_GRIPPER_WRIST        4       // 夹爪旋转 = 数组下标逻辑关节 4
+
+/*
+ * PCA9685 物理通道映射
+ *
+ * 更改接线时只需修改此处数值，所有 Servo_Set_Angle 调用自动跟随
+ * 例: 底座插在 PCA9685 通道 4 → #define DEFINE_JOINT_BASE 4
+ */
+#define DEFINE_JOINT_BASE               0       // 底座 → PCA9685 通道号
+#define DEFINE_JOINT_ARM_1              1       // 一大臂 → PCA9685 通道号
+#define DEFINE_JOINT_ARM_2              2       // 二大臂 → PCA9685 通道号
+#define DEFINE_JOINT_GRIPPER            3       // 夹爪 → PCA9685 通道号
+#define DEFINE_JOINT_GRIPPER_WRIST      4       // 夹爪旋转 → PCA9685 通道号
 
 // 机械臂关节默认角度（复位位置）
-#define ANGLE_ZERO_BASE             90.0f   // 底座
-#define ANGLE_ZERO_ARM_1            90.0f   // 一大臂
-#define ANGLE_ZERO_ARM_2            20.0f   // 二大臂
-#define ANGLE_ZERO_GRIPPER          90.0f   // 夹爪
-#define ANGLE_ZERO_WRIST            0.0f    // 夹爪旋转
+#define ANGLE_ZERO_BASE                 90.0f   // 底座
+#define ANGLE_ZERO_ARM_1                90.0f   // 一大臂
+#define ANGLE_ZERO_ARM_2                20.0f   // 二大臂
+#define ANGLE_ZERO_GRIPPER              90.0f   // 夹爪
+#define ANGLE_ZERO_WRIST                0.0f    // 夹爪旋转
 
-#define JOINT_STEP_COUNT            45      // 固定走 STEP_COUNT 步
-                                            // 所有关节同时到位
+#define JOINT_STEP_COUNT                45      // 固定走 STEP_COUNT 步
+                                                // 所有关节同时到位
 
-#define ANGLE_EPSILON               0.5f    // 角度到位容差(度)，误差 < 0.1° 视为到位
+#define ANGLE_EPSILON                   0.5f    // 角度到位容差(度)，误差 < 0.1° 视为到位
 
 // 物理长度定义(单位:cm)
-#define LEN_ARM_1                   7.47f   // 一大臂旋转中心到二大臂旋转中心距离
-#define LEN_ARM_2_TO_GRIPPER        21.5f   // 二大臂旋转中心到夹爪夹取中心距离
-#define LEN_HIGH_OFFSET             9.11f   // 一大臂旋转中心与夹取物体平台高差
+#define LEN_ARM_1                       7.47f   // 一大臂旋转中心到二大臂旋转中心距离
+#define LEN_ARM_2_TO_GRIPPER            21.5f   // 二大臂旋转中心到夹爪夹取中心距离
+#define LEN_HIGH_OFFSET                 9.11f   // 一大臂旋转中心与夹取物体平台高差
 
 // 底座在世界坐标系中的位置(单位:cm)
 // 用于可能需要的校准
-#define BASE_X                      0.0f    // TODO: 实测底座在世界坐标系的 X 坐标
-#define BASE_Y                      0.0f    // TODO: 实测底座在世界坐标系的 Y 坐标
+#define BASE_X                          0.0f    // TODO: 实测底座在世界坐标系的 X 坐标
+#define BASE_Y                          0.0f    // TODO: 实测底座在世界坐标系的 Y 坐标
 
 /*
  * 舵机旋转方向配置 (1 或 -1)
@@ -45,12 +62,15 @@
  *
  * 方向不确定时保持默认值，联调时根据实测翻转
  */
-#define DIR_BASE                    1       // 底座旋转方向
-#define DIR_ARM_1                   1       // 一大臂弯曲方向
-#define DIR_ARM_2                   1       // 二大臂弯曲方向
+#define DIR_BASE                        1       // 底座旋转方向
+#define DIR_ARM_1                       1       // 一大臂弯曲方向
+#define DIR_ARM_2                       1       // 二大臂弯曲方向
 
 // 最终用于抓取解析的坐标值(单位:cm)
 extern float x_result , y_result;
+// 所有舵机目标角度和当前角度(实际上无法直接获取当前角度)的数组
+extern float target_angle[JOINT_COUNT];
+extern float current_angle[JOINT_COUNT];
 
 /*
  * 抓取逆运动学解析
