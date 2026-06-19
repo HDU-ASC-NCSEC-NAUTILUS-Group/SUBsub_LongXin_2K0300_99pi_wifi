@@ -23,13 +23,14 @@
  * PCA9685 物理通道映射
  *
  * 更改接线时只需修改此处数值，所有 Servo_Set_Angle 调用自动跟随
- * 例: 底座插在 PCA9685 通道 4 → #define DEFINE_JOINT_BASE 4
+ *   例: 底座插在 PCA9685 通道 4 → #define DEFINE_JOINT_BASE 4
+ *   设为 -1 则该关节被禁用，servo_move_sync / servo_reset_init 均跳过
  */
 #define DEFINE_JOINT_BASE               0       // 底座 → PCA9685 通道号
 #define DEFINE_JOINT_ARM_1              1       // 一大臂 → PCA9685 通道号
 #define DEFINE_JOINT_ARM_2              2       // 二大臂 → PCA9685 通道号
 #define DEFINE_JOINT_GRIPPER            3       // 夹爪 → PCA9685 通道号
-#define DEFINE_JOINT_GRIPPER_WRIST      4       // 夹爪旋转 → PCA9685 通道号
+#define DEFINE_JOINT_GRIPPER_WRIST      -1      // 夹爪旋转 → 禁用(-1)
 
 // 机械臂关节默认角度（复位位置）
 #define ANGLE_ZERO_BASE                 90.0f   // 底座
@@ -95,5 +96,23 @@ int grasp_compute_angles(void);
  * 返回值: 1=运动完成, 0=运动中/空闲/中止/冷却期
  */
 int servo_move_sync(int enable);
+
+/*
+ * 舵机角度初始化（非阻塞）
+ *
+ * 按顺序将各关节依次拉回复位角度:
+ *   夹爪 → 一大臂 → 二大臂 → 底座
+ * 每步成功发送后自动等待 300ms 再进行下一步
+ *
+ * 调用方式:
+ *   servo_reset_init(1);   // 启动: 同步 current_angle/target_angle 为复位值，重置状态机
+ *   servo_reset_init(0);   // 中止: 清空状态机（通常不需要调用）
+ *   servo_reset_init(2);   // 推进: 主循环每轮调用，推进状态机
+ *
+ *   if (servo_reset_init(2)) { ... }  // 返回 1 表示全部复位完成
+ *
+ * 返回值: 1=全部复位完成, 0=进行中
+ */
+int servo_reset_init(int cmd);
 
 #endif

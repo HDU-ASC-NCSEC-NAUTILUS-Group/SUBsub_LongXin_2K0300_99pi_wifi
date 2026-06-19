@@ -113,19 +113,25 @@ int QR_process(void)
 // 红色物块检测函数：输入 BGR 图像，返回质心坐标（若未检测到则返回 (-1,-1)）
 static cv::Point2i detect_red_object(const cv::Mat &frame_bgr)
 {
+    // 预分配：Mat 内存只分配一次，后续调用复用
+    static cv::Mat hsv, mask1, mask2, mask;
+    static const cv::Scalar kRedLow1(0,   50, 50);
+    static const cv::Scalar kRedHigh1(10,  255, 255);
+    static const cv::Scalar kRedLow2(160,  50, 50);
+    static const cv::Scalar kRedHigh2(180, 255, 255);
+    static const cv::Mat    kKernel3x3 = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
     // 转换为 HSV 颜色空间
-    cv::Mat hsv;
     cv::cvtColor(frame_bgr, hsv, cv::COLOR_BGR2HSV);
 
     // 红色在 HSV 中有两个区间：低区间 (0~10) 和高区间 (160~180)
-    cv::Mat mask1, mask2, mask;
-    cv::inRange(hsv, cv::Scalar(0, 50, 50), cv::Scalar(10, 255, 255), mask1);
-    cv::inRange(hsv, cv::Scalar(160, 50, 50), cv::Scalar(180, 255, 255), mask2);
+    cv::inRange(hsv, kRedLow1,  kRedHigh1, mask1);
+    cv::inRange(hsv, kRedLow2,  kRedHigh2, mask2);
     mask = mask1 | mask2;
 
-    // 可选：形态学操作，去除噪声
-    cv::erode(mask, mask, cv::Mat(), cv::Point(-1, -1), 1);
-    cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), 2);
+    // 形态学操作，去除噪声
+    cv::erode(mask, mask, kKernel3x3);
+    cv::dilate(mask, mask, kKernel3x3);
 
     // 寻找轮廓
     std::vector<std::vector<cv::Point>> contours;
@@ -135,14 +141,19 @@ static cv::Point2i detect_red_object(const cv::Mat &frame_bgr)
         return cv::Point2i(-1, -1);  // 未检测到红色物体
     }
 
-    // 选择面积最大的轮廓
-    auto largest = std::max_element(contours.begin(), contours.end(),
-                                    [](const std::vector<cv::Point> &a, const std::vector<cv::Point> &b) {
-                                        return cv::contourArea(a) < cv::contourArea(b);
-                                    });
+    // 单次遍历找最大轮廓：每个轮廓只算一次面积
+    float best_area = -1.0f;
+    size_t best_idx = 0;
+    for (size_t i = 0; i < contours.size(); i++) {
+        float a = (float)cv::contourArea(contours[i]);
+        if (a > best_area) {
+            best_area = a;
+            best_idx  = i;
+        }
+    }
 
     // 计算质心（一阶矩）
-    cv::Moments m = cv::moments(*largest);
+    cv::Moments m = cv::moments(contours[best_idx]);
     if (m.m00 == 0) {
         return cv::Point2i(-1, -1);
     }
@@ -214,6 +225,10 @@ int object_tracking(void)
     coordinate_x = red_center.x;
     coordinate_y = red_center.y;
 
+    // -1: 已处理但未检测到红色物体, 1: 成功追踪, 0: 跳帧/无帧
+    if (red_center.x == -1 || red_center.y == -1) {
+        return -1;
+    }
     return 1;
 }
 /**********************************************************/

@@ -4,17 +4,21 @@
 // 最终用于抓取解析的坐标值
 float x_result = 0.0f, y_result = 0.0f;
 
-// 初始化为复位角度
-float target_angle[JOINT_COUNT]
-//  = {
-//     [NAME_JOINT_BASE]          = ANGLE_ZERO_BASE,
-//     [NAME_JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
-//     [NAME_JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
-//     [NAME_JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
-//     [NAME_JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
-// }
-;
-float current_angle[JOINT_COUNT];  // 当前角度(实际上是无法直接读取到实际角度的，只是方便状态控制)
+// 初始化为复位角度，防止零初始化导致误动作
+float target_angle[JOINT_COUNT] = {
+    [NAME_JOINT_BASE]          = ANGLE_ZERO_BASE,
+    [NAME_JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
+    [NAME_JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
+    [NAME_JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
+    [NAME_JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
+};
+float current_angle[JOINT_COUNT] = {
+    [NAME_JOINT_BASE]          = ANGLE_ZERO_BASE,
+    [NAME_JOINT_ARM_1]         = ANGLE_ZERO_ARM_1,
+    [NAME_JOINT_ARM_2]         = ANGLE_ZERO_ARM_2,
+    [NAME_JOINT_GRIPPER]       = ANGLE_ZERO_GRIPPER,
+    [NAME_JOINT_GRIPPER_WRIST] = ANGLE_ZERO_WRIST,
+};
 
 /**********************************************************/
 /*[S] 抓取解析 [S]-----------------------------------------*/
@@ -163,7 +167,9 @@ int servo_move_sync(int enable)
         return 0;
     }
 
-    /* ===== 检测目标变更，触发重启（已禁用）=====
+    // 禁用,保留代码段完整写法
+    //
+    /* ===== 检测目标变更，触发重启=====
      *
      * 当前版本不自动中止：运动过程中即使 target_angle 被外部改写，
      * 也会先把当前段走完。中途需要中止请显式调用 servo_move_sync(0)。
@@ -184,6 +190,7 @@ int servo_move_sync(int enable)
     if (motion_state == MOTION_IDLE) {
         int has_target = 0;   // 是否有任一关节需要运动
         for (int j = 0; j < JOINT_COUNT; j++) {
+            if (joint_channel[j] < 0) continue;   // 通道号-1=关节禁用
             cached_target[j] = target_angle[j];
             float error   = cached_target[j] - current_angle[j];   // 该关节需要走的总角度
             float abs_err = (error < 0.0f) ? -error : error;       // |error|
@@ -206,6 +213,7 @@ int servo_move_sync(int enable)
         int any_sent = 0;    // 本轮是否至少发了一条 I2C 指令
 
         for (int j = 0; j < JOINT_COUNT; j++) {
+            if (joint_channel[j] < 0) continue;   // 通道号-1=关节禁用
             float error   = cached_target[j] - current_angle[j];   // 该关节剩余角度
             float abs_err = (error < 0.0f) ? -error : error;       // |error|
 
@@ -250,4 +258,97 @@ int servo_move_sync(int enable)
 
 /**********************************************************/
 /*--------------------------------------[E] 舵机逐步运动 [E]*/
+/**********************************************************/
+
+
+/**********************************************************/
+/*[S] 舵机复位初始化 [S]------------------------------------*/
+/**********************************************************/
+
+/*
+ * 复位顺序: 夹爪 → 一大臂 → 二大臂 → 底座
+ * 这个顺序保证机械臂从任意姿态安全展开:
+ *   先闭合夹爪 → 抬起二大臂 → 抬起一大臂 → 旋转底座
+ */
+static const int   reset_order[4] = {
+    NAME_JOINT_GRIPPER,
+    NAME_JOINT_ARM_1,
+    NAME_JOINT_ARM_2,
+    NAME_JOINT_BASE
+};
+static const float reset_angle[4] = {
+    ANGLE_ZERO_GRIPPER,
+    ANGLE_ZERO_ARM_1,
+    ANGLE_ZERO_ARM_2,
+    ANGLE_ZERO_BASE
+};
+
+enum {
+    RST_SEND = 0,       // 发送当前关节角度
+    RST_WAIT = 1,       // 等待延时到期
+};
+static int   rst_state    = RST_SEND;        // 子状态
+static int   rst_idx      = 0;               // 当前关节索引 (0~3)
+static uint64_t rst_deadline_us = 0;         // 延时到期时刻
+
+#define RST_DELAY_US    300000               // 关节间等待 300ms
+
+int servo_reset_init(int cmd)
+{
+    uint64_t now;
+
+    // cmd=0: 中止，重置状态机
+    if (cmd == 0) {
+        rst_state = RST_SEND;
+        rst_idx   = 0;
+        return 0;
+    }
+
+    // cmd=1: 启动（同步 current_angle/target_angle 为复位值，重置状态机）
+    if (cmd == 1) {
+        current_angle[NAME_JOINT_GRIPPER]   = ANGLE_ZERO_GRIPPER;
+        current_angle[NAME_JOINT_ARM_1]     = ANGLE_ZERO_ARM_1;
+        current_angle[NAME_JOINT_ARM_2]     = ANGLE_ZERO_ARM_2;
+        current_angle[NAME_JOINT_BASE]      = ANGLE_ZERO_BASE;
+        target_angle[NAME_JOINT_GRIPPER]    = ANGLE_ZERO_GRIPPER;
+        target_angle[NAME_JOINT_ARM_1]      = ANGLE_ZERO_ARM_1;
+        target_angle[NAME_JOINT_ARM_2]      = ANGLE_ZERO_ARM_2;
+        target_angle[NAME_JOINT_BASE]       = ANGLE_ZERO_BASE;
+        rst_state = RST_SEND;
+        rst_idx   = 0;
+        // fall through to tick
+    }
+
+    // cmd=2 (或 cmd=1 穿透): 逐帧推进状态机
+
+    // 全部完成
+    if (rst_idx >= 4) {
+        return 1;
+    }
+
+    switch (rst_state) {
+
+    case RST_SEND: {
+        int ch = joint_channel[reset_order[rst_idx]];
+        if (Servo_Set_Angle(ch, reset_angle[rst_idx])) {
+            rst_deadline_us = sm_now_us() + RST_DELAY_US;
+            rst_state = RST_WAIT;
+        }
+        break;
+    }
+
+    case RST_WAIT:
+        now = sm_now_us();
+        if (now >= rst_deadline_us) {
+            rst_idx++;
+            rst_state = RST_SEND;
+        }
+        break;
+    }
+
+    return (rst_idx >= 4) ? 1 : 0;
+}
+
+/**********************************************************/
+/*--------------------------------------[E] 舵机复位初始化 [E]*/
 /**********************************************************/

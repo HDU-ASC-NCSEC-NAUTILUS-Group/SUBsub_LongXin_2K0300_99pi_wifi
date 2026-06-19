@@ -393,7 +393,7 @@ int Debug_UVC_TRACK(void)
             return 0;
         }
         
-        if (object_tracking()) 
+        if (object_tracking() == 1)
         {
             coordinate_transformation();
         }
@@ -585,14 +585,24 @@ int Debug_ARM_Grasp(void)
     // 0 停止
     // 1 接收视觉返回
     // 2 开始舵机动作
-    uint8_t arm_work_state = 0;
+    // 3 复位中
+    uint8_t arm_work_state = 3;
+
+    servo_reset_init(1);   // 启动复位，穿透执行第一个关节
 
     while(1)
     {
-        Key_Check(KEY_NAME_UP,KEY_SINGLE);
-        Key_Check(KEY_NAME_DOWN,KEY_SINGLE);
-        if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
+        if (Key_Check(KEY_NAME_UP,KEY_SINGLE) || Key_Check(KEY_NAME_DOWN,KEY_SINGLE))
         {
+            // 复位中不重复触发
+            if (arm_work_state != 3) {
+                arm_work_state = 3;
+                servo_reset_init(1);
+            }
+        }
+        else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE) && arm_work_state != 3)
+        {
+            // 开始接收视觉返回（复位中忽略）
             arm_work_state = 1;
         }
         else if (Key_Check(KEY_NAME_BACK,KEY_SINGLE))
@@ -604,15 +614,27 @@ int Debug_ARM_Grasp(void)
             Track_Count = 0;
 
             servo_move_sync(0);
+            servo_reset_init(0);
             Stop_Servo_All();
             return 0;
+        }
+
+        // 复位中：逐帧推进，忽略其他逻辑
+        if (arm_work_state == 3)
+        {
+            if (servo_reset_init(2))
+            {
+                arm_work_state = 0;
+                printf("复位完成\n");
+            }
+            continue;
         }
 
         // 每次循环重置为0,识别成功后置1
         Track_Success = 0;
 
         // 视觉识别
-        if (object_tracking())
+        if (object_tracking() == 1)
         {
             coordinate_transformation();
             Track_Success = 1;
