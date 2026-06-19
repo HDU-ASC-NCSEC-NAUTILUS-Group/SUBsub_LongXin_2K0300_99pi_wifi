@@ -36,7 +36,7 @@ float current_angle[JOINT_COUNT] = {
  * 角度约定:
  *   底座 90° = 机械臂朝向 +Y
  *   一大臂 90° = 竖直向上 (Z+)
- *   二大臂 90° = 竖直向上 (Z+)
+ *   二大臂 180° = 竖直向上 (Z+)，角度减小 → 向下翻转
  *
  * DIR_BASE / DIR_ARM_1 / DIR_ARM_2 控制旋转方向极性
  */
@@ -64,8 +64,8 @@ int grasp_compute_angles(void)
     if (base_tar > 180.0f) base_tar = 180.0f;
 
     // ------ 2. 机械臂平面内的二连杆 IK ------
-    h_dist  = sqrtf(dx * dx + dy * dy);
-    z_reach = LEN_HIGH_OFFSET;
+    h_dist  = sqrtf(dx * dx + dy * dy);   // 底座到物体的水平距离
+    z_reach = -LEN_HIGH_OFFSET;           // 垂直落差 (负值=物体在底座下方)
 
     r_sq = h_dist * h_dist + z_reach * z_reach;
     cos_a2 = (r_sq - LEN_ARM_1 * LEN_ARM_1 - LEN_ARM_2_TO_GRIPPER * LEN_ARM_2_TO_GRIPPER)
@@ -83,9 +83,9 @@ int grasp_compute_angles(void)
 
     a1 = beta - gamma;
 
-    // 转换为舵机角度 (90° = 竖直向上)
+    // 转换为舵机角度 (一大臂 90°=向上, 二大臂 180°=向上)
     arm1_tar = 90.0f - (float)DIR_ARM_1 * a1 * (180.0f / (float)M_PI);
-    arm2_tar = 90.0f - (float)DIR_ARM_2 * a2 * (180.0f / (float)M_PI);
+    arm2_tar = 180.0f - (float)DIR_ARM_2 * a2 * (180.0f / (float)M_PI);
 
     // 防止溢出
     if (arm1_tar < 5.0f)   arm1_tar = 5.0f;
@@ -249,9 +249,17 @@ int servo_move_sync(int enable)
         }
     }
 
-    /* ===== 完成态：等待新目标 ===== */
+    /* ===== 完成态：检测 target_angle 变更，自动重启 ===== */
     if (motion_state == MOTION_DONE) {
-        return 1;   // 运动完成，通知上层
+        for (int j = 0; j < JOINT_COUNT; j++) {
+            if (joint_channel[j] < 0) continue;
+            float diff = target_angle[j] - current_angle[j];
+            if (diff < -ANGLE_EPSILON || diff > ANGLE_EPSILON) {
+                motion_state = MOTION_IDLE;   // target_angle 被外部改写，重新开始
+                return 0;
+            }
+        }
+        return 1;   // 无变更，保持完成
     }
 
     return 0;

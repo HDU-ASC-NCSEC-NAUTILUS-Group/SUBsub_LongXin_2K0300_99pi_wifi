@@ -35,11 +35,11 @@
 // 机械臂关节默认角度（复位位置）
 #define ANGLE_ZERO_BASE                 90.0f   // 底座
 #define ANGLE_ZERO_ARM_1                90.0f   // 一大臂
-#define ANGLE_ZERO_ARM_2                20.0f   // 二大臂
-#define ANGLE_ZERO_GRIPPER              90.0f   // 夹爪
+#define ANGLE_ZERO_ARM_2                135.0f   // 二大臂
+#define ANGLE_ZERO_GRIPPER              145.0f   // 夹爪
 #define ANGLE_ZERO_WRIST                0.0f    // 夹爪旋转
 
-#define JOINT_STEP_COUNT                45      // 固定走 STEP_COUNT 步
+#define JOINT_STEP_COUNT                40      // 固定走 STEP_COUNT 步
                                                 // 所有关节同时到位
 
 #define ANGLE_EPSILON                   0.5f    // 角度到位容差(度)，误差 < 0.1° 视为到位
@@ -47,7 +47,7 @@
 // 物理长度定义(单位:cm)
 #define LEN_ARM_1                       7.47f   // 一大臂旋转中心到二大臂旋转中心距离
 #define LEN_ARM_2_TO_GRIPPER            21.5f   // 二大臂旋转中心到夹爪夹取中心距离
-#define LEN_HIGH_OFFSET                 9.11f   // 一大臂旋转中心与夹取物体平台高差
+#define LEN_HIGH_OFFSET                 10.0f   // 一大臂旋转中心与夹取物体平台高差
 
 // 底座在世界坐标系中的位置(单位:cm)
 // 用于可能需要的校准
@@ -55,17 +55,18 @@
 #define BASE_Y                          0.0f    // TODO: 实测底座在世界坐标系的 Y 坐标
 
 /*
- * 舵机旋转方向配置 (1 或 -1)
+ * 舵机旋转方向配置 (+1 或 -1)
  *
- * DIR_BASE  =  1  表示底座角度增大时机械臂朝 +X 方向旋转
- * DIR_ARM_1 =  1  表示一大臂角度增大时末端朝前(Y+大致方向)运动
- * DIR_ARM_2 =  1  表示二大臂角度增大时末端朝前运动
+ * 描述的是 DIR 取 +1 时的物理效果:
+ *   DIR_BASE  +1 → 角度增大时，末端扫向 +X 方向(逆时针)
+ *   DIR_ARM_1 +1 → 角度增大时，一大臂向前(向下)翻转
+ *   DIR_ARM_2 +1 → 角度增大时，二大臂向前(向下)翻转
  *
- * 方向不确定时保持默认值，联调时根据实测翻转
+ * 实测方向相反则改为 -1
  */
-#define DIR_BASE                        1       // 底座旋转方向
-#define DIR_ARM_1                       1       // 一大臂弯曲方向
-#define DIR_ARM_2                       1       // 二大臂弯曲方向
+#define DIR_BASE                       -1      // 底座旋转方向
+#define DIR_ARM_1                      -1      // 一大臂弯曲方向
+#define DIR_ARM_2                       1      // 二大臂弯曲方向
 
 // 最终用于抓取解析的坐标值(单位:cm)
 extern float x_result , y_result;

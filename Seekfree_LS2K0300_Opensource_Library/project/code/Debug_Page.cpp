@@ -418,7 +418,7 @@ int Debug_Servo(void)
     ips200_show_string(0 ,48 , ">");
 
     // 存储设置的舵机角度,实际考虑更改数值时才做实际设置PWM
-    uint8_t Angle[4] = {90 ,90 ,90 ,90};
+    uint8_t Angle[4] = {90 ,90 ,135 ,145};
 
     // 停止所有的舵机控制
     Stop_Servo_All();
@@ -586,6 +586,8 @@ int Debug_ARM_Grasp(void)
     // 1 接收视觉返回
     // 2 开始舵机动作
     // 3 复位中
+    // 4 夹爪闭合
+    // 5 机械臂抬起
     uint8_t arm_work_state = 3;
 
     servo_reset_init(1);   // 启动复位，穿透执行第一个关节
@@ -650,8 +652,8 @@ int Debug_ARM_Grasp(void)
 
             if (Track_Count == 5)
             {
-                x_result = x_sum / 5.0f;
-                y_result = y_sum / 5.0f;
+                x_result = x_sum / 5.0f + 0.0f;
+                y_result = y_sum / 5.0f + 0.0f;
                 x_sum    = 0.0f;
                 y_sum    = 0.0f;
                 if (grasp_compute_angles())
@@ -669,8 +671,32 @@ int Debug_ARM_Grasp(void)
         {
             if (servo_move_sync(1))
             {
-                arm_work_state = 0;
+                arm_work_state = 4;                         // 大臂到位，进入夹爪闭合
                 printf("ARM:MOVE-DONE!\n");
+            }
+        }
+
+        // 夹爪闭合（一步到位）
+        if (arm_work_state == 4)
+        {
+            Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 60.0f);
+            current_angle[NAME_JOINT_GRIPPER] = 60.0f;
+            // 设定抬起目标角度（夹爪保持在60°不张开）
+            target_angle[NAME_JOINT_GRIPPER] = 60.0f;
+            target_angle[NAME_JOINT_BASE]    = 90.0f;
+            target_angle[NAME_JOINT_ARM_1]   = 90.0f;
+            target_angle[NAME_JOINT_ARM_2]   = 90.0f;
+            arm_work_state = 5;
+            printf("ARM:GRIP-CLOSE!\n");
+        }
+
+        // 机械臂抬起
+        if (arm_work_state == 5)
+        {
+            if (servo_move_sync(1))
+            {
+                arm_work_state = 0;
+                printf("ARM:LIFT-DONE!\n");
             }
         }
     }
