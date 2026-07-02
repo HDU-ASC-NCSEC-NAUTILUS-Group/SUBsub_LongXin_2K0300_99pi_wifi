@@ -46,6 +46,8 @@ extern cv::Mat frame_rgay;
 
 //二维码相关数据初始化
 cv::QRCodeDetector qrDecoder;
+char g_qr_data[128] = {0};
+volatile bool g_qr_data_ready = false;
 
 // 二维码解码处理
 int QR_process(void)
@@ -94,6 +96,11 @@ int QR_process(void)
         snprintf(buf, sizeof(buf), "QR: %.40s", qr_data.c_str());
         ips200_show_string(0, SCREEN_HEIGHT - 16, buf);
         gpio_set_level(BEEP, 0x1);
+
+        // 导出解码结果供 transport() 消费
+        strncpy(g_qr_data, qr_data.c_str(), sizeof(g_qr_data) - 1);
+        g_qr_data[sizeof(g_qr_data) - 1] = '\0';
+        g_qr_data_ready = true;
     } else {
         ips200_show_string(0, SCREEN_HEIGHT - 16, "No QR code");
         gpio_set_level(BEEP, 0x0);

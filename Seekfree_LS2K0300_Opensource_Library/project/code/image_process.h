@@ -14,5 +14,9 @@ void coordinate_transformation(void);
 // 映射完成的物理坐标值
 extern float real_x, real_y;
 
+// 二维码解码结果：QR_process() 识别成功时写入，transport() 消费后清零
+extern char g_qr_data[128];
+extern volatile bool g_qr_data_ready;
+
 
 #endif
