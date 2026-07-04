@@ -163,10 +163,11 @@
 //===================================================用户自定义文件===================================================
 #include "../model/loong_cnn_model_simple.h"
 #include "defines.h"
+#include "grasp_controller.h"
 #include "image_process.h"
 #include "Key.h"
 #include "param_config.h"
-#include "grasp_controller.h"
+#include "process.h"
 //===================================================用户自定义文件===================================================
 
 

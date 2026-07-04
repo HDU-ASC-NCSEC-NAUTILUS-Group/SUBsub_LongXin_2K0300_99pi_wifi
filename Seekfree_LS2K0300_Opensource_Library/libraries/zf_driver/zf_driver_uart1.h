@@ -36,4 +36,6 @@ int  uart1_recv(uint8 *buf, uint32 maxlen);
 int  uart1_available(void);
 int  uart1_printf(const char *fmt, ...);
 
+char* uart1_recv_frame(void);
+
 #endif

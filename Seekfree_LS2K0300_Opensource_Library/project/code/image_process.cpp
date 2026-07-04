@@ -47,16 +47,31 @@ extern cv::Mat frame_rgay;
 //二维码相关数据初始化
 cv::QRCodeDetector qrDecoder;
 
-// 二维码解码处理
-int QR_process(void)
+/*
+ * 二维码解码处理
+ *
+ * 调用示例：
+ *   const char* qr = QR_process();
+ *   if (qr != nullptr) {
+ *       // 识别成功，qr 为解码字符串，例如 "01"
+ *       printf("QR: %s\n", qr);
+ *   } else {
+ *       // 暂无识别结果（无帧、跳帧或未检测到二维码）
+ *   }
+ *
+ * 返回值：
+ *   const char*  — 识别成功时返回解码字符串（静态缓冲区，下次调用会覆盖）
+ *   nullptr      — 无帧、跳帧或未检测到二维码
+ */
+const char* QR_process(void)
 {
     int result = wait_image_refresh();       // 1=有帧, 0=暂无, <0=错误
     if (result <= 0) {
-        return 0;
+        return nullptr;
     }
 
     if (frame_rgay.empty() || rgay_image == nullptr) {
-        return 0;
+        return nullptr;
     }
 
     // 跳帧：每隔 ~500ms 处理一次二维码，节省算力
@@ -65,7 +80,7 @@ int QR_process(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     int64_t now_ms = (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
     if (now_ms - last_qr_ms < 500) {
-        return 0;
+        return nullptr;
     }
     last_qr_ms = now_ms;
 
@@ -89,17 +104,21 @@ int QR_process(void)
 
     std::string qr_data = qrDecoder.detectAndDecode(frame_gray_proc);
 
+    static char qr_result[128];
+
     if (!qr_data.empty()) {
         char buf[64];
         snprintf(buf, sizeof(buf), "QR: %.40s", qr_data.c_str());
         ips200_show_string(0, SCREEN_HEIGHT - 16, buf);
-        gpio_set_level(BEEP, 0x1);
+        //gpio_set_level(BEEP, 0x1);
+
+        snprintf(qr_result, sizeof(qr_result), "%s", qr_data.c_str());
+        return qr_result;
     } else {
         ips200_show_string(0, SCREEN_HEIGHT - 16, "No QR code");
         gpio_set_level(BEEP, 0x0);
+        return nullptr;
     }
-    
-    return 1;
 }
 /**********************************************************/
 /*----------------------------------------[E] 二维码处理 [E]*/
