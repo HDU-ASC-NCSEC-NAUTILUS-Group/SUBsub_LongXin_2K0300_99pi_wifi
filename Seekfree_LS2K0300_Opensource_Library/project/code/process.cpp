@@ -8,6 +8,7 @@
 
 typedef enum{
     PROCESS_IDLE = 0,   // 进程 不进行/空闲
+    GRASP_RESET,        // 正在 复位 机械臂
     QR_SCANNING,        // 正在 扫描/寻找 二维码
     QR_SEND,            // 正在 发送 数据
     TRACK_SCANNING,     // 正在 寻找 物块
@@ -56,7 +57,7 @@ int Sub_Board_Process(void)
         else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
         {
             // 进程开始，第一步即持续寻找二维码
-            Cur_STATE = QR_SCANNING;
+            Cur_STATE = GRASP_RESET;
         }
         else if(Key_Check(KEY_NAME_BACK,KEY_SINGLE))
         {
@@ -67,43 +68,30 @@ int Sub_Board_Process(void)
             return 0;
         }
 
-        // /* UART1 接收 */
-        // char *cmd = uart1_recv_frame();
-        // if (cmd) // 如果拿到了完整的包体数据（已经去除包头包尾）
-        // {
-        //     if (strcmp(cmd, "AAA") == 0)        // 收到 [AAA]\n
-        //     {
 
-        //     }
-        //     else if (strcmp(cmd, "BBB") == 0)        // 收到 [BBB]\n
-        //     {
-
-        //     }
-        // }
-
+        // 进程状态机
         switch(Cur_STATE)
         {
             // 进程 不进行/空闲
             case PROCESS_IDLE:{
 
+                break;
+            }
+
+            // 正在 复位 机械臂
+            case GRASP_RESET:{
+
                 // 推进机械臂复位状态机
                 if (servo_reset_init(2))
                 {
-                    printf("复位完成\n");
+                    // 进程进入下一步
+                    Cur_STATE = QR_SCANNING;
                 }
-
                 break;
             }
 
             // 正在 扫描/寻找 二维码
             case QR_SCANNING:{
-
-                // 推进机械臂复位状态机
-                if (servo_reset_init(2))
-                {
-                    printf("复位完成\n");
-                }
-                continue;
 
                 const char* qr = QR_process();
                 // 二维码有返回值
@@ -149,7 +137,7 @@ int Sub_Board_Process(void)
                 
                 if (object_tracking() == 1) // 有识别结果的帧
                 {
-                    if ((abs(pre_coordinate_x - coordinate_x) <= 2) ||
+                    if ((abs(pre_coordinate_x - coordinate_x) <= 2) &&
                     (abs(pre_coordinate_y - coordinate_y) <= 2))
                     {
                         coordinate_stable_count ++;
@@ -182,6 +170,7 @@ int Sub_Board_Process(void)
                             if (grasp_compute_angles())
                             {
                                 // printf("B:%.1f ,1:%.1f ,2:%.1f\n", target_angle[0], target_angle[1], target_angle[2]);
+                                coordinate_stable_count = 0;
 
                                 // 进程进入下一步
                                 Cur_STATE = GRASP_CONTROL;
@@ -204,7 +193,7 @@ int Sub_Board_Process(void)
             // 正在 控制 机械臂 （
             case GRASP_CONTROL:{ 
             
-                if (servo_move_sync(1)) // 如果底座，一大臂，二大臂到达计算位置
+                if (servo_move_sync(1)) //等待果底座，一大臂，二大臂到达设置位置
                 {
                     // 夹爪设置在60°
                     Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 60.0f);
@@ -224,7 +213,7 @@ int Sub_Board_Process(void)
                 target_angle[NAME_JOINT_BASE]    = 90.0f;
                 target_angle[NAME_JOINT_ARM_1]   = 90.0f;
                 target_angle[NAME_JOINT_ARM_2]   = 90.0f;
-                if (servo_move_sync(1))
+                if (servo_move_sync(1)) //等待果底座，一大臂，二大臂到达设置位置
                 {
                     // 进程进入下一步
                     Cur_STATE = GRASP_KEEP;
@@ -235,7 +224,18 @@ int Sub_Board_Process(void)
 
             // 正在 保持 机械臂
             case GRASP_KEEP:{       
-            
+                
+                /* UART1 接收 */
+                char *cmd = uart1_recv_frame();
+                if (cmd) // 如果拿到了完整的包体数据（已经去除包头包尾）
+                {
+                    if (strcmp(cmd, "AAA") == 0)        // 收到 [AAA]\n
+                    {
+                        // 进程进入下一步
+                        Cur_STATE = GRASP_RELEASE;
+                    }
+                }
+
                 break;
             }
 
