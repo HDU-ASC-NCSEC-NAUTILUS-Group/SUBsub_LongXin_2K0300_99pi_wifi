@@ -8,9 +8,15 @@
 #include <errno.h>
 #include <poll.h>
 
+
+/**********************************************************/
+/*[S] 基础驱动 [S]-----------------------------------------*/
+/**********************************************************/
+
 static int  g_uart1_fd = -1;
 static char g_uart1_txbuf[256];
 
+// uart1初始化
 int uart1_init(const char *device, uint32 baudrate)
 {
     g_uart1_fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
@@ -64,6 +70,7 @@ void uart1_deinit(void)
     }
 }
 
+// uart1发送
 int uart1_send(const uint8 *data, uint32 len)
 {
     if (g_uart1_fd < 0 || data == NULL || len == 0) return -1;
@@ -80,6 +87,7 @@ int uart1_send(const uint8 *data, uint32 len)
     return total;
 }
 
+// uart1接收
 int uart1_recv(uint8 *buf, uint32 maxlen)
 {
     if (g_uart1_fd < 0 || buf == NULL || maxlen == 0) return -1;
@@ -102,6 +110,7 @@ int uart1_available(void)
     return (poll(&pfd, 1, 0) > 0) && (pfd.revents & POLLIN);
 }
 
+// uart1格式化发送
 int uart1_printf(const char *fmt, ...)
 {
     va_list args;
@@ -113,8 +122,13 @@ int uart1_printf(const char *fmt, ...)
     return uart1_send((const uint8*)g_uart1_txbuf, (uint32)len);
 }
 
+/**********************************************************/
+/*-----------------------------------------[E] 基础驱动 [E]*/
+/**********************************************************/
+
 // 被验证可行的调用方法
 // 这个测试函数可以直接替代所有main代码进行独立测试使用的
+// 验证时期极早期，请注意
 //
 //
 //
@@ -154,3 +168,60 @@ int uart1_printf(const char *fmt, ...)
 //         system_delay_ms(10);
 //     }
 // }
+
+
+/**********************************************************/
+/*[S] 接收二次封装 [S]--------------------------------------*/
+/**********************************************************/
+
+#define UART1_PARSE_BUF_SIZE  128
+
+static uint8_t  rx_buf[UART1_PARSE_BUF_SIZE];
+static int      rx_pos = 0;
+static char     frame[UART1_PARSE_BUF_SIZE];
+
+char* uart1_recv_frame(void)
+{
+    int free_len = sizeof(rx_buf) - rx_pos - 1;
+    if (free_len <= 0) {
+        rx_pos = 0;          // 满缓冲保护：清空恢复
+        rx_buf[0] = '\0';
+        free_len = sizeof(rx_buf) - 1;
+    }
+
+    int n = uart1_recv(rx_buf + rx_pos, free_len);
+    if (n <= 0) return NULL;
+    rx_pos += n;
+    rx_buf[rx_pos] = '\0';
+
+    char *end = strchr((char*)rx_buf, '\n');
+    if (!end) return NULL;
+    *end = '\0';
+
+    char *line  = (char*)rx_buf;                 // 限定搜索范围在当前行内
+    char *start = strchr(line, '[');
+    char *stop  = start ? strchr(start + 1, ']') : NULL;
+
+    if (start && stop && stop > start + 1) {     // 非空包体
+        int len = stop - start - 1;
+        if (len >= UART1_PARSE_BUF_SIZE) len = UART1_PARSE_BUF_SIZE - 1;
+        memcpy(frame, start + 1, len);
+        frame[len] = '\0';
+    } else {
+        frame[0] = '\0';
+    }
+
+    int remain = rx_pos - (end + 1 - (char*)rx_buf);
+    if (remain > 0) {
+        memmove(rx_buf, end + 1, remain);
+        rx_pos = remain;
+    } else {
+        rx_pos = 0;
+    }
+
+    return frame[0] ? frame : NULL;
+}
+
+/**********************************************************/
+/*--------------------------------------[E] 接收二次封装 [E]*/
+/**********************************************************/

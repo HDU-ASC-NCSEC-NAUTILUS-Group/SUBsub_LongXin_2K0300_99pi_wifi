@@ -1,14 +1,11 @@
 /*******************************************************************************
-* 主菜单文件
+* 进程控制文件
 *******************************************************************************/
-#ifndef __MENU_H__
-#define __MENU_H__
+#ifndef __PROCESS_H__
+#define __PROCESS_H__
 
 
-// 外设初始化
-void Peripheral_Init(void);
-// 菜单调用
-void Menu_Show(void);
+int Sub_Board_Process(void);
 
 
 #endif
