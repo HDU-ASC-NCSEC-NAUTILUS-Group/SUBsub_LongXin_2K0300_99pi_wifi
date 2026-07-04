@@ -107,7 +107,7 @@ void Menu_Show(void)
 
 
         /* 模式跳转*/
-        if (menu_flag_temp == 2)
+        if (menu_flag_temp == 1)
         {
             ips200_clear();
             Sub_Board_Process(); // 当前板被视作"副板"，或者为"上板"

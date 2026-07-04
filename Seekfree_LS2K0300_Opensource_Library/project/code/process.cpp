@@ -56,8 +56,10 @@ int Sub_Board_Process(void)
         }
         else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
         {
-            // 进程开始，第一步即持续寻找二维码
-            Cur_STATE = GRASP_RESET;
+            // 进程开始，第一步为复位机械臂
+            servo_reset_init(1);
+            printf("GRASP_RESET\n");
+            Cur_STATE = GRASP_RESET;        
         }
         else if(Key_Check(KEY_NAME_BACK,KEY_SINGLE))
         {
@@ -75,6 +77,7 @@ int Sub_Board_Process(void)
             // 进程 不进行/空闲
             case PROCESS_IDLE:{
 
+                
                 break;
             }
 
@@ -85,7 +88,8 @@ int Sub_Board_Process(void)
                 if (servo_reset_init(2))
                 {
                     // 进程进入下一步
-                    Cur_STATE = QR_SCANNING;
+                    printf("QR_SCANNING\n");
+                    Cur_STATE = QR_SCANNING;                   
                 }
                 break;
             }
@@ -100,7 +104,8 @@ int Sub_Board_Process(void)
                     QR_Result[sizeof(QR_Result) - 1] = '\0';
                     
                     // 进程进入下一步
-                    Cur_STATE = QR_SEND;
+                    printf("QR_SEND\n");
+                    Cur_STATE = QR_SEND;                    
                 }
 
                 break;
@@ -127,6 +132,7 @@ int Sub_Board_Process(void)
                 }
 
                 // 进程进入下一步
+                printf("TRACK_SCANNING\n");
                 Cur_STATE = TRACK_SCANNING;
 
                 break;
@@ -155,16 +161,16 @@ int Sub_Board_Process(void)
                     pre_coordinate_x = coordinate_x;
                     pre_coordinate_y = coordinate_y;
 
-                    if (coordinate_stable_count > (20 - 10))
+                    if (coordinate_stable_count > (10 - 5))
                     {
                         coordinate_transformation();
 
                         sum_real_x += real_x;
                         sum_real_y += real_y;
-                        if (coordinate_stable_count >= 20)
+                        if (coordinate_stable_count >= 10)
                         {
-                            x_result = sum_real_x / 10.0f + 0.0f;
-                            y_result = sum_real_y / 10.0f + 0.0f;
+                            x_result = sum_real_x / 5.0f + 0.0f;
+                            y_result = sum_real_y / 5.0f + 0.0f;
                             sum_real_x    = 0.0f;
                             sum_real_y    = 0.0f;
                             if (grasp_compute_angles())
@@ -173,6 +179,7 @@ int Sub_Board_Process(void)
                                 coordinate_stable_count = 0;
 
                                 // 进程进入下一步
+                                printf("GRASP_CONTROL\n");
                                 Cur_STATE = GRASP_CONTROL;
                             }
                             else // 解析失败，重新开始识别物块位置
@@ -192,7 +199,8 @@ int Sub_Board_Process(void)
 
             // 正在 控制 机械臂 （
             case GRASP_CONTROL:{ 
-            
+
+                object_tracking();
                 if (servo_move_sync(1)) //等待果底座，一大臂，二大臂到达设置位置
                 {
                     // 夹爪设置在60°
@@ -201,6 +209,7 @@ int Sub_Board_Process(void)
                     target_angle[NAME_JOINT_GRIPPER] = 60.0f;
 
                     // 进程进入下一步
+                    printf("GRASP_UP\n");
                     Cur_STATE = GRASP_UP;
                 }
 
@@ -209,13 +218,15 @@ int Sub_Board_Process(void)
 
             // 正在 抬起 机械臂 在这一步结尾或者下一步，将发送信息给下板）
             case GRASP_UP:{       
-            
+                
+                object_tracking();
                 target_angle[NAME_JOINT_BASE]    = 90.0f;
                 target_angle[NAME_JOINT_ARM_1]   = 90.0f;
                 target_angle[NAME_JOINT_ARM_2]   = 90.0f;
                 if (servo_move_sync(1)) //等待果底座，一大臂，二大臂到达设置位置
                 {
                     // 进程进入下一步
+                    printf("GRASP_KEEP\n");
                     Cur_STATE = GRASP_KEEP;
                 }
 
@@ -232,6 +243,7 @@ int Sub_Board_Process(void)
                     if (strcmp(cmd, "AAA") == 0)        // 收到 [AAA]\n
                     {
                         // 进程进入下一步
+                        printf("GRASP_RELEASE\n");
                         Cur_STATE = GRASP_RELEASE;
                     }
                 }
@@ -248,6 +260,7 @@ int Sub_Board_Process(void)
                 target_angle[NAME_JOINT_GRIPPER] = 135.0f;
 
                 // 进程进入下一步
+                printf("PROCESS_DONE\n");
                 Cur_STATE = PROCESS_DONE;
 
                 break;
@@ -261,6 +274,4 @@ int Sub_Board_Process(void)
         }
 
     }
-
-    
 }

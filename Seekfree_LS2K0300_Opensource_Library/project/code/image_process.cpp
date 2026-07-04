@@ -110,7 +110,7 @@ const char* QR_process(void)
         char buf[64];
         snprintf(buf, sizeof(buf), "QR: %.40s", qr_data.c_str());
         ips200_show_string(0, SCREEN_HEIGHT - 16, buf);
-        gpio_set_level(BEEP, 0x1);
+        //gpio_set_level(BEEP, 0x1);
 
         snprintf(qr_result, sizeof(qr_result), "%s", qr_data.c_str());
         return qr_result;
