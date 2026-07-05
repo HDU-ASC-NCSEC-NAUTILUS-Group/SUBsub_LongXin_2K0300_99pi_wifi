@@ -4,6 +4,7 @@
 #ifndef __image_process_H__
 #define __image_process_H__
 
+#define BEEP    "/dev/zf_driver_gpio_beep"
 
 //UVC摄像头识别相关函数
 // 返回1表示识别到物体，返回-1表示处理了但未识别，返回0表示跳帧/无帧

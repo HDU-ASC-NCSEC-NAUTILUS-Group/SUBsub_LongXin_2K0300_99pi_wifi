@@ -11,7 +11,7 @@
 #include <vector>
 #include <time.h>       // clock_gettime
 
-#define BEEP    "/dev/zf_driver_gpio_beep"
+//#define BEEP    "/dev/zf_driver_gpio_beep"
 
 /**********************************************************/
 /*[S] 图像本体定义 [S]--------------------------------------*/
