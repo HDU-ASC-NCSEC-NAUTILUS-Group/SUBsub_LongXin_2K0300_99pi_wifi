@@ -679,10 +679,10 @@ int Debug_ARM_Grasp(void)
         // 夹爪闭合（一步到位）
         if (arm_work_state == 4)
         {
-            Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 60.0f);
-            current_angle[NAME_JOINT_GRIPPER] = 60.0f;
+            Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 90.0f);
+            current_angle[NAME_JOINT_GRIPPER] = 90.0f;
             // 设定抬起目标角度（夹爪保持在60°不张开）
-            target_angle[NAME_JOINT_GRIPPER] = 60.0f;
+            target_angle[NAME_JOINT_GRIPPER] = 90.0f;
             target_angle[NAME_JOINT_BASE]    = 90.0f;
             target_angle[NAME_JOINT_ARM_1]   = 90.0f;
             target_angle[NAME_JOINT_ARM_2]   = 90.0f;

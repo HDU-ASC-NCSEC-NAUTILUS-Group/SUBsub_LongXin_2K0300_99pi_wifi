@@ -36,7 +36,7 @@
 #define ANGLE_ZERO_BASE                 90.0f   // 底座
 #define ANGLE_ZERO_ARM_1                90.0f   // 一大臂
 #define ANGLE_ZERO_ARM_2                135.0f   // 二大臂
-#define ANGLE_ZERO_GRIPPER              145.0f   // 夹爪
+#define ANGLE_ZERO_GRIPPER              170.0f   // 夹爪
 #define ANGLE_ZERO_WRIST                0.0f    // 夹爪旋转
 
 #define JOINT_STEP_COUNT                40      // 固定走 STEP_COUNT 步

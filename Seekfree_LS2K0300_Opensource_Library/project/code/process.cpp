@@ -120,15 +120,15 @@ int Sub_Board_Process(void)
 
                 if (strcmp(QR_Result, "01") == 0)
                 {
-                    uart1_printf("[111]\n");
+                    uart1_printf("[01]\n");
                 }
                 else if (strcmp(QR_Result, "02") == 0)
                 {
-                    uart1_printf("[222]\n");
+                    uart1_printf("[02]\n");
                 }
                 else if (strcmp(QR_Result, "03") == 0)
                 {
-                    uart1_printf("[333]\n");
+                    uart1_printf("[03]\n");
                 }
 
                 // 进程进入下一步
@@ -204,9 +204,9 @@ int Sub_Board_Process(void)
                 if (servo_move_sync(1)) //等待果底座，一大臂，二大臂到达设置位置
                 {
                     // 夹爪设置在60°
-                    Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 60.0f);
-                    current_angle[NAME_JOINT_GRIPPER] = 60.0f;
-                    target_angle[NAME_JOINT_GRIPPER] = 60.0f;
+                    Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 90.0f);
+                    current_angle[NAME_JOINT_GRIPPER] = 90.0f;
+                    target_angle[NAME_JOINT_GRIPPER] = 90.0f;
 
                     // 进程进入下一步
                     printf("GRASP_UP\n");
@@ -227,6 +227,7 @@ int Sub_Board_Process(void)
                 {
                     // 进程进入下一步
                     printf("GRASP_KEEP\n");
+                    uart1_printf("[DONE]\n");
                     Cur_STATE = GRASP_KEEP;
                 }
 
@@ -240,7 +241,7 @@ int Sub_Board_Process(void)
                 char *cmd = uart1_recv_frame();
                 if (cmd) // 如果拿到了完整的包体数据（已经去除包头包尾）
                 {
-                    if (strcmp(cmd, "AAA") == 0)        // 收到 [AAA]\n
+                    if (strcmp(cmd, "DONE") == 0)        // 收到 [DONE]\n
                     {
                         // 进程进入下一步
                         printf("GRASP_RELEASE\n");
@@ -255,9 +256,9 @@ int Sub_Board_Process(void)
             case GRASP_RELEASE:{  
             
                 // 夹爪设置在135°
-                Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 135.0f);
-                current_angle[NAME_JOINT_GRIPPER] = 135.0f;
-                target_angle[NAME_JOINT_GRIPPER] = 135.0f;
+                Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 170.0f);
+                current_angle[NAME_JOINT_GRIPPER] = 170.0f;
+                target_angle[NAME_JOINT_GRIPPER] = 170.0f;
 
                 // 进程进入下一步
                 printf("PROCESS_DONE\n");
