@@ -129,8 +129,7 @@ static float cached_target[JOINT_COUNT] = {
     INVALID_ANGLE,
     INVALID_ANGLE
 };                                           // 快照，屏蔽外部改动
-static float step_size[JOINT_COUNT];        // 每关节每步增量
-static int step_remain;                     // 剩余步数，倒计数
+static float step_size[JOINT_COUNT];        // 每关节每步增量（= ±ANGLE_STEP_SIZE）
 
 /*
  * 逻辑关节 → PCA9685 物理通道映射
@@ -160,7 +159,6 @@ int servo_move_sync(int enable)
     /* ===== 中止 ===== */
     if (enable == 0) {
         motion_state = MOTION_IDLE;
-        step_remain  = 0;
         for (int j = 0; j < JOINT_COUNT; j++) {
             cached_target[j] = INVALID_ANGLE;
         }
@@ -198,11 +196,10 @@ int servo_move_sync(int enable)
             if (abs_err >= ANGLE_EPSILON) {
                 has_target = 1;
             }
-            step_size[j] = error / JOINT_STEP_COUNT;   // 每步增量，可正可负
+            step_size[j] = (error > 0.0f) ? ANGLE_STEP_SIZE : -ANGLE_STEP_SIZE;   // 固定步长，方向由误差决定
         }
 
         if (has_target) {
-            step_remain  = JOINT_STEP_COUNT;   // 剩余步数
             motion_state = MOTION_MOVING;
         }
         return 0;
@@ -225,8 +222,12 @@ int servo_move_sync(int enable)
             all_done = 0;
 
             float step_target = current_angle[j] + step_size[j];   // 本步目标角度
-            if (step_remain <= 1) {
-                step_target = cached_target[j];   // 最后一步直接拉到终值
+            // 防过冲：剩余误差不足一个步长时，直接拉到终值
+            if (error > 0.0f && step_target > cached_target[j]) {
+                step_target = cached_target[j];
+            }
+            if (error < 0.0f && step_target < cached_target[j]) {
+                step_target = cached_target[j];
             }
 
             if (Servo_Set_Angle(joint_channel[j], step_target)) {
@@ -236,12 +237,9 @@ int servo_move_sync(int enable)
             // 返回 0 表示冷却期内，本轮跳过，下次继续尝试此关节
         }
 
-        // 所有关节都追上步目标 → 步进
+        // 所有关节都已到位 → 完成
         if (all_done) {
-            step_remain--;
-            if (step_remain <= 0) {
-                motion_state = MOTION_DONE;
-            }
+            motion_state = MOTION_DONE;
         }
 
         if (!any_sent) {

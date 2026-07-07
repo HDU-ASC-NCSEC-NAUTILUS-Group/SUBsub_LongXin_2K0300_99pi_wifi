@@ -39,10 +39,10 @@
 #define ANGLE_ZERO_GRIPPER              170.0f   // 夹爪
 #define ANGLE_ZERO_WRIST                0.0f    // 夹爪旋转
 
-#define JOINT_STEP_COUNT                40      // 固定走 STEP_COUNT 步
-                                                // 所有关节同时到位
+#define ANGLE_STEP_SIZE                 1.0f    // 每步最大角度增量(度)
+                                                // 关节独立推进，步长为该值或剩余误差
 
-#define ANGLE_EPSILON                   0.5f    // 角度到位容差(度)，误差 < 0.1° 视为到位
+#define ANGLE_EPSILON                   0.5f    // 角度到位容差(度)，误差 < 0.5° 视为到位
 
 // 物理长度定义(单位:cm)
 #define LEN_ARM_1                       7.47f   // 一大臂旋转中心到二大臂旋转中心距离

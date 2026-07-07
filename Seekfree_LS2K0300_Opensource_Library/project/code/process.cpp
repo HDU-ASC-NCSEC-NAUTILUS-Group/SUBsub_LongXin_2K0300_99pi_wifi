@@ -3,8 +3,9 @@
 *******************************************************************************/
 
 #include "zf_common_headfile.h"
+#include <time.h>       // clock_gettime
 
-
+#define GRASP_KEEP_DELAY_SEC  5   // 收到 DONE 后延迟 N 秒再进入下一步
 
 typedef enum{
     PROCESS_IDLE = 0,   // 进程 不进行/空闲
@@ -235,17 +236,35 @@ int Sub_Board_Process(void)
             }
 
             // 正在 保持 机械臂
-            case GRASP_KEEP:{       
-                
+            case GRASP_KEEP:{
+                static uint64_t deadline_us = 0;   // 0=无延迟, 非0=到期时刻(微秒)
+
+                // 延迟等待中：检查是否到期
+                if (deadline_us != 0) {
+                    struct timespec ts;
+                    clock_gettime(CLOCK_MONOTONIC, &ts);
+                    uint64_t now_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+                    if (now_us >= deadline_us) {
+                        deadline_us = 0;
+
+                        // 进程进入下一步
+                        printf("GRASP_RELEASE\n");
+                        Cur_STATE = GRASP_RELEASE;
+                    }
+                    break;
+                }
+
                 /* UART1 接收 */
                 char *cmd = uart1_recv_frame();
                 if (cmd) // 如果拿到了完整的包体数据（已经去除包头包尾）
                 {
                     if (strcmp(cmd, "DONE") == 0)        // 收到 [DONE]\n
                     {
-                        // 进程进入下一步
-                        printf("GRASP_RELEASE\n");
-                        Cur_STATE = GRASP_RELEASE;
+                        // 启动延迟，GRASP_KEEP_DELAY_SEC 秒后再进入下一步
+                        struct timespec ts;
+                        clock_gettime(CLOCK_MONOTONIC, &ts);
+                        deadline_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000
+                                    + (uint64_t)GRASP_KEEP_DELAY_SEC * 1000000UL;
                     }
                 }
 
