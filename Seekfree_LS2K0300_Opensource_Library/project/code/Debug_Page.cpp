@@ -2,7 +2,9 @@
 * Debug模式菜单文件
 *******************************************************************************/
 #include "zf_common_headfile.h"
+#include <time.h>       // clock_gettime
 
+#define ARM_MOVE_DONE_DELAY_SEC 1   // 舵机到位后延迟 N 秒再闭合夹爪
 
 /**********************************************************/
 /*[S] 菜单样式 [S]-----------------------------------------*/
@@ -650,10 +652,10 @@ int Debug_ARM_Grasp(void)
             Track_Count += 1;
             printf("ARM:TRACK-%d\n",Track_Count);
 
-            if (Track_Count == 5)
+            if (Track_Count == 10)
             {
-                x_result = x_sum / 5.0f + 0.0f;
-                y_result = y_sum / 5.0f + 0.0f;
+                x_result = x_sum / 10.0f + 0.0f;
+                y_result = y_sum / 10.0f + 0.0f;
                 x_sum    = 0.0f;
                 y_sum    = 0.0f;
                 if (grasp_compute_angles())
@@ -669,20 +671,33 @@ int Debug_ARM_Grasp(void)
         // 舵机运动中
         if (arm_work_state == 2)
         {
-            if (servo_move_sync(1))
-            {
-                arm_work_state = 4;                         // 大臂到位，进入夹爪闭合
-                printf("ARM:MOVE-DONE!\n");
+            static uint64_t deadline_us = 0;   // 0=无延迟
+
+            // 延迟等待中：检查是否到期
+            if (deadline_us != 0) {
+                struct timespec ts;
+                clock_gettime(CLOCK_MONOTONIC, &ts);
+                uint64_t now_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+                if (now_us >= deadline_us) {
+                    deadline_us = 0;
+                    arm_work_state = 4;
+                    printf("ARM:MOVE-DONE!\n");
+                }
+            } else if (servo_move_sync(1)) {
+                struct timespec ts;
+                clock_gettime(CLOCK_MONOTONIC, &ts);
+                deadline_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000
+                            + (uint64_t)ARM_MOVE_DONE_DELAY_SEC * 1000000UL;
             }
         }
 
         // 夹爪闭合（一步到位）
         if (arm_work_state == 4)
         {
-            Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 90.0f);
-            current_angle[NAME_JOINT_GRIPPER] = 90.0f;
+            Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 85.0f);
+            current_angle[NAME_JOINT_GRIPPER] = 85.0f;
             // 设定抬起目标角度（夹爪保持在60°不张开）
-            target_angle[NAME_JOINT_GRIPPER] = 90.0f;
+            target_angle[NAME_JOINT_GRIPPER] = 85.0f;
             target_angle[NAME_JOINT_BASE]    = 90.0f;
             target_angle[NAME_JOINT_ARM_1]   = 90.0f;
             target_angle[NAME_JOINT_ARM_2]   = 90.0f;

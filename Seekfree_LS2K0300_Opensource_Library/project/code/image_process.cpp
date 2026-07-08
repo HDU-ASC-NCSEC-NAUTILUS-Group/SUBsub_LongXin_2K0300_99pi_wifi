@@ -265,14 +265,14 @@ void coordinate_transformation(void)
 {
     // ---------- 1. 定义标定点（像素坐标 -> 物理坐标）----------
     static const cv::Point2f src_pts[3] = {
-        cv::Point2f(496, 280),   // 对应物理 (0, 15)
-        cv::Point2f(430, 404),   // 对应物理 (3.5, 27)
-        cv::Point2f(216, 95)    // 对应物理 (-2.5, 27.6)
+        cv::Point2f(458, 272),   // 对应物理 (x1,y1)
+        cv::Point2f(364, 170),   // 对应物理 (x2,y2)
+        cv::Point2f(280, 374)    // 对应物理 (x3,y3)
     };
     static const cv::Point2f dst_pts[3] = {
-        cv::Point2f(0, 15),
-        cv::Point2f(-4.81f, 13.9f),
-        cv::Point2f(6.86f, 22.0f)
+        cv::Point2f(0, 13),
+        cv::Point2f(4.5f, 16.8f),
+        cv::Point2f(-3.6f, 19.6f)
     };
 
     // 计算仿射变换矩阵（2x3），只计算一次并缓存

@@ -47,7 +47,7 @@
 // 物理长度定义(单位:cm)
 #define LEN_ARM_1                       7.47f   // 一大臂旋转中心到二大臂旋转中心距离
 #define LEN_ARM_2_TO_GRIPPER            21.5f   // 二大臂旋转中心到夹爪夹取中心距离
-#define LEN_HIGH_OFFSET                 10.0f   // 一大臂旋转中心与夹取物体平台高差
+#define LEN_HIGH_OFFSET                 10.5f   // 一大臂旋转中心与夹取物体平台高差
 
 // 底座在世界坐标系中的位置(单位:cm)
 // 用于可能需要的校准

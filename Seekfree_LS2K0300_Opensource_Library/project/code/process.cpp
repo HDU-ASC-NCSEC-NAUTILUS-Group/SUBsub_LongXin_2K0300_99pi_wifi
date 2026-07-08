@@ -5,7 +5,8 @@
 #include "zf_common_headfile.h"
 #include <time.h>       // clock_gettime
 
-#define GRASP_KEEP_DELAY_SEC  5   // 收到 DONE 后延迟 N 秒再进入下一步
+#define GRASP_KEEP_DELAY_SEC    5   // 收到 DONE 后延迟 N 秒再进入下一步
+#define GRASP_CONTROL_DELAY_SEC 1   // 舵机到位后延迟 N 秒再闭合夹爪
 
 typedef enum{
     PROCESS_IDLE = 0,   // 进程 不进行/空闲
@@ -162,16 +163,16 @@ int Sub_Board_Process(void)
                     pre_coordinate_x = coordinate_x;
                     pre_coordinate_y = coordinate_y;
 
-                    if (coordinate_stable_count > (10 - 5))
+                    if (coordinate_stable_count > (20 - 10))
                     {
                         coordinate_transformation();
 
                         sum_real_x += real_x;
                         sum_real_y += real_y;
-                        if (coordinate_stable_count >= 10)
+                        if (coordinate_stable_count >= 20)
                         {
-                            x_result = sum_real_x / 5.0f + 0.0f;
-                            y_result = sum_real_y / 5.0f + 0.0f;
+                            x_result = sum_real_x / 10.0f + 0.0f;
+                            y_result = sum_real_y / 10.0f + 0.0f;
                             sum_real_x    = 0.0f;
                             sum_real_y    = 0.0f;
                             if (grasp_compute_angles())
@@ -198,20 +199,35 @@ int Sub_Board_Process(void)
                 break;
             }
 
-            // 正在 控制 机械臂 （
-            case GRASP_CONTROL:{ 
+            // 正在 控制 机械臂
+            case GRASP_CONTROL:{
+                static uint64_t deadline_us = 0;   // 0=无延迟
+
+                // 延迟等待中：检查是否到期
+                if (deadline_us != 0) {
+                    struct timespec ts;
+                    clock_gettime(CLOCK_MONOTONIC, &ts);
+                    uint64_t now_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+                    if (now_us >= deadline_us) {
+                        deadline_us = 0;
+                        // 夹爪闭合
+                        Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 85.0f);
+                        current_angle[NAME_JOINT_GRIPPER] = 85.0f;
+                        target_angle[NAME_JOINT_GRIPPER] = 85.0f;
+                        printf("GRASP_UP\n");
+                        Cur_STATE = GRASP_UP;
+                    }
+                    break;
+                }
 
                 object_tracking();
-                if (servo_move_sync(1)) //等待果底座，一大臂，二大臂到达设置位置
+                if (servo_move_sync(1)) // 等待底座，一大臂，二大臂到达设置位置
                 {
-                    // 夹爪设置在60°
-                    Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 90.0f);
-                    current_angle[NAME_JOINT_GRIPPER] = 90.0f;
-                    target_angle[NAME_JOINT_GRIPPER] = 90.0f;
-
-                    // 进程进入下一步
-                    printf("GRASP_UP\n");
-                    Cur_STATE = GRASP_UP;
+                    // 启动延迟，GRASP_CONTROL_DELAY_SEC 秒后再闭合夹爪
+                    struct timespec ts;
+                    clock_gettime(CLOCK_MONOTONIC, &ts);
+                    deadline_us = (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000
+                                + (uint64_t)GRASP_CONTROL_DELAY_SEC * 1000000UL;
                 }
 
                 break;
