@@ -52,8 +52,9 @@ void Menu_UI(uint8_t Page)
 		{
             ips200_show_string(8  ,0  , "[Menu]");
             ips200_show_string(0  ,16 , "==============================");
-            ips200_show_string(10 ,32 , "Process");
-            ips200_show_string(10 ,48 , "Debug");
+            ips200_show_string(10 ,32 , "Transport-Mode");
+            ips200_show_string(10 ,48 , "Follow-Mode");
+            ips200_show_string(10 ,64 , "Debug");
 
 			break;
 		}
@@ -89,13 +90,13 @@ void Menu_Show(void)
         {
             key_pressed = 1;
             menu_flag --;
-            if (menu_flag < 1)menu_flag = 2;
+            if (menu_flag < 1)menu_flag = 3;
         }
         else if (Key_Check(KEY_NAME_DOWN,KEY_SINGLE))
         {
             key_pressed = 1;
             menu_flag ++;
-            if (menu_flag > 2)menu_flag = 1;
+            if (menu_flag > 3)menu_flag = 1;
         }
         else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
         {
@@ -105,14 +106,13 @@ void Menu_Show(void)
         Key_Check(KEY_NAME_BACK,KEY_SINGLE);
 
 
-
         /* 模式跳转*/
         if (menu_flag_temp == 1)
         {
             ips200_clear();
             Sub_Board_Process(); // 当前板被视作"副板"，或者为"上板"
 
-            // 从Process模式返回，显示主菜单界面
+            // 从Transport模式返回，显示主菜单界面
             ips200_clear();
             Menu_UI(1);
             ips200_show_string(0  ,32 , ">");
@@ -120,12 +120,42 @@ void Menu_Show(void)
         else if (menu_flag_temp == 2)
         {
             ips200_clear();
+            ips200_show_string(8  ,0  , "Follow-Mode");
+            // 让下板进入Follow模式
+            uart1_printf("[CMD-Fo]\n");
+
+            while(1) // 此时上板没有其他工作
+            {
+                // 仅消费标志位，防止按键残留影响后续界面
+                Key_Check(KEY_NAME_UP,      KEY_SINGLE);
+                Key_Check(KEY_NAME_DOWN,    KEY_SINGLE);
+                Key_Check(KEY_NAME_CONFIRM, KEY_SINGLE);
+
+                // 按键处理
+                if (Key_Check(KEY_NAME_BACK, KEY_SINGLE))
+                {
+                    // 向下板发出停止指令
+                    uart1_printf("[CMD-ST]\n");
+                    return 0;
+                }
+
+                system_delay_ms(50);   // 50ms 轮询，避免空转占满 CPU
+            }
+
+            // 从Follow模式返回，显示主菜单界面
+            ips200_clear();
+            Menu_UI(1);
+            ips200_show_string(0  ,48 , ">");
+        }
+        else if (menu_flag_temp == 3)
+        {
+            ips200_clear();
             Debug_Page_Menu();
 
             // 从Debug模式返回，显示主菜单界面
             ips200_clear();
             Menu_UI(1);
-            ips200_show_string(0  ,48 , ">");
+            ips200_show_string(0  ,64 , ">");
         }
 
 
@@ -134,18 +164,25 @@ void Menu_Show(void)
         {
             switch (menu_flag)
             {
-                // 在"Process"模式的光标
+                // 在Transport模式的光标
                 case 1:
                     ips200_clear();
                     Menu_UI(1);
                     ips200_show_string(0  ,32 , ">");
                     break;
 
-                // 在"Debug"模式的光标
+                // 在Follow模式的光标
                 case 2:
                     ips200_clear();
                     Menu_UI(1);
                     ips200_show_string(0  ,48 , ">");
+                    break;
+
+                // 在"Debug"模式的光标
+                case 3:
+                    ips200_clear();
+                    Menu_UI(1);
+                    ips200_show_string(0  ,64 , ">");
                     break;
             }
         }

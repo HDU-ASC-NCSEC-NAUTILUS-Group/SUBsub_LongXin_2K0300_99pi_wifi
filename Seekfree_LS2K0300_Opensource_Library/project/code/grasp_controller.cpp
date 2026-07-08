@@ -275,7 +275,7 @@ int servo_move_sync(int enable)
 /*
  * 复位顺序: 夹爪 → 一大臂 → 二大臂 → 底座
  * 这个顺序保证机械臂从任意姿态安全展开:
- *   先闭合夹爪 → 抬起二大臂 → 抬起一大臂 → 旋转底座
+ *   先闭合夹爪 → 抬起一大臂 → 抬起二大臂 → 旋转底座
  */
 static const int   reset_order[4] = {
     NAME_JOINT_GRIPPER,

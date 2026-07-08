@@ -696,7 +696,7 @@ int Debug_ARM_Grasp(void)
         {
             Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 85.0f);
             current_angle[NAME_JOINT_GRIPPER] = 85.0f;
-            // 设定抬起目标角度（夹爪保持在60°不张开）
+            // 设定抬起目标角度（夹爪保持在85°不张开）
             target_angle[NAME_JOINT_GRIPPER] = 85.0f;
             target_angle[NAME_JOINT_BASE]    = 90.0f;
             target_angle[NAME_JOINT_ARM_1]   = 90.0f;

@@ -40,6 +40,9 @@ int Sub_Board_Process(void)
     ips200_clear();
     ips200_show_string(8  ,0  , "IDLE");
 
+    // 让下板进入Transport模式
+    uart1_printf("[CMD-Tr]\n");
+
     while(1)
     {
         /* 按键处理*/
@@ -55,9 +58,15 @@ int Sub_Board_Process(void)
             servo_move_sync(0);
             servo_reset_init(0);
             Stop_Servo_All();
+
+            // 向下板发出停止指令
+            uart1_printf("[CMD-ST]\n");
         }
         else if (Key_Check(KEY_NAME_CONFIRM,KEY_SINGLE))
         {
+            // 让下板进入Transport模式
+            uart1_printf("[CMD-Tr]\n");
+
             // 进程开始，第一步为复位机械臂
             servo_reset_init(1);
             printf("GRASP_RESET\n");
@@ -290,7 +299,7 @@ int Sub_Board_Process(void)
             // 正在 松开 机械臂
             case GRASP_RELEASE:{  
             
-                // 夹爪设置在135°
+                // 夹爪松开（170°对应物理张开）
                 Servo_Set_Angle(DEFINE_JOINT_GRIPPER, 170.0f);
                 current_angle[NAME_JOINT_GRIPPER] = 170.0f;
                 target_angle[NAME_JOINT_GRIPPER] = 170.0f;
